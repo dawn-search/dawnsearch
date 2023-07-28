@@ -1,13 +1,16 @@
 use std::{
     env, fs,
-    time::{SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
+use anyhow::Context;
+use html5ever::{parse_document, tendril::TendrilSink};
+use markup5ever_rcdom::RcDom;
 use rusqlite::Connection;
 
 use arecibo::extract::{extract, extract_text, find_links};
 use arecibo::util::slice_up_to;
-use url::Url;
+use url::{ParseError, Url};
 
 fn main() -> anyhow::Result<()> {
     fs::create_dir_all("store")?;
@@ -36,14 +39,39 @@ fn main() -> anyhow::Result<()> {
     )?;
 
     fn insert(conn: &Connection, url: &str) {
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
-        let _ = conn.execute(
-            "INSERT INTO url (url, discovered) VALUES (?1, ?2)",
-            (&url, now),
-        );
+        if let Ok(_parsed) = Url::parse(url) {
+            let now = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs();
+            let _ = conn.execute(
+                "INSERT INTO url (url, discovered) VALUES (?1, ?2)",
+                (&url, now),
+            );
+        } else {
+            println!("Ignoring invalid URL: {}", url);
+        }
+    }
+
+    fn join_if_needed(base: &Url, input: &str) -> anyhow::Result<Url> {
+        match Url::parse(input) {
+            Ok(url) => Ok(url),
+            Err(ParseError::RelativeUrlWithoutBase) => Ok(base.join(input)?),
+            error => Ok(error?),
+        }
+    }
+
+    fn clean_url(base: &Url, input: &str) -> anyhow::Result<String> {
+        let url = join_if_needed(base, input)?;
+
+        let scheme = url.scheme();
+        let host = url.host().context("no host")?.to_string();
+        let path = url.path();
+        Ok(if let Some(port) = url.port() {
+            format!("{}://{}:{}{}", scheme, host, port, path)
+        } else {
+            format!("{}://{}{}", scheme, host, path)
+        })
     }
 
     for url in env::args().skip(1) {
@@ -52,6 +80,10 @@ fn main() -> anyhow::Result<()> {
     }
 
     // Let's go crawl!
+    fn agent() -> ureq::Agent {
+        ureq::AgentBuilder::new().user_agent("Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Arecibot/0.1; https://localhost/todo/fill/this/in) Chrome/115.0.0.0 Safari/537.36").build()
+    }
+
     let mut find_to_crawl =
         conn.prepare("SELECT url FROM url WHERE crawled IS NULL ORDER BY discovered ASC LIMIT 1")?;
     let mut delete_url = conn.prepare("DELETE FROM url WHERE url = ?1")?;
@@ -60,29 +92,41 @@ fn main() -> anyhow::Result<()> {
         let mut found_some = false;
         while let Some(row) = rows.next()? {
             let url: String = row.get(0)?;
-            println!("Found url {}", url);
             found_some = true;
             delete_url.execute(&[&url])?;
 
             // Let's crawl.
-            let body = ureq::get(&url).call()?.into_string()?;
+            let body = agent().get(&url).call()?.into_string()?;
             let mut body_slice = slice_up_to(&body, 1024 * 250).as_bytes();
 
             let url = Url::parse(&url).unwrap();
             // TODO: main page of wikipedia does not extract correctly. Firefox reader works.
 
-            let (dom, cleaned_document) = extract(&mut body_slice, &url);
+            let mut dom = parse_document(RcDom::default(), Default::default())
+                .from_utf8()
+                .read_from(&mut body_slice)
+                .unwrap();
+
+            let mut links = Vec::new();
+            find_links(&dom.document, &mut links);
+            for link in links {
+                if let Ok(link_url) = clean_url(&url, &link.href) {
+                    println!("{}", link_url);
+                    insert(&conn, &link_url);
+                } else {
+                    println!("Invalid URL for {:?}", link);
+                }
+            }
+
+            let cleaned_document = extract(&mut dom, &url);
             let mut clean: String = String::new();
             extract_text(&cleaned_document, &mut clean, true);
 
+            println!("");
+            println!("{}", url);
             println!("{}", clean);
 
-            let mut links = Vec::new();
-            find_links(&cleaned_document, &mut links);
-            for link in links {
-                println!("{:?}", link);
-                insert(&conn, &link.href);
-            }
+            std::thread::sleep(Duration::from_secs(2));
         }
         if !found_some {
             break;

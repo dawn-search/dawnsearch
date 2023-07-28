@@ -1,5 +1,3 @@
-use html5ever::parse_document;
-use html5ever::tendril::TendrilSink;
 use markup5ever_rcdom::Handle;
 use markup5ever_rcdom::NodeData::{Element, Text};
 use markup5ever_rcdom::RcDom;
@@ -7,8 +5,6 @@ use readability::scorer;
 use readability::scorer::Candidate;
 use std::cell::Cell;
 use std::collections::BTreeMap;
-use std::default::Default;
-use std::io::Read;
 use std::path::Path;
 use std::rc::Rc;
 use url::Url;
@@ -28,7 +24,8 @@ pub fn extract_text(handle: &Handle, text: &mut String, deep: bool) {
             }
             _ => (),
         }
-        if text.chars().last() != Some(' ') {
+        let last_char = text.chars().last();
+        if last_char != Some(' ') && last_char != None {
             text.push(' '); // To make sure we get spaces.
         }
     }
@@ -67,14 +64,7 @@ pub fn find_links(handle: &Handle, links: &mut Vec<Link>) {
     }
 }
 
-pub fn extract<R>(input: &mut R, url: &Url) -> (RcDom, Rc<markup5ever_rcdom::Node>)
-where
-    R: Read,
-{
-    let mut dom = parse_document(RcDom::default(), Default::default())
-        .from_utf8()
-        .read_from(input)
-        .unwrap();
+pub fn extract(mut dom: &mut RcDom, url: &Url) -> Rc<markup5ever_rcdom::Node> {
     let mut title = String::new();
     let mut candidates = BTreeMap::new();
     let mut nodes = BTreeMap::new();
@@ -104,6 +94,5 @@ where
     let node = top_candidate.node.clone();
     scorer::clean(&mut dom, Path::new(id), node.clone(), url, &candidates);
 
-    // Return entire dom so the node doesn't become empty.
-    (dom, node)
+    node
 }
