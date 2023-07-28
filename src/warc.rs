@@ -4,7 +4,6 @@ use std::io;
 use std::io::BufRead;
 use std::io::Write;
 use std::path::PathBuf;
-use std::str;
 use std::time::Instant;
 
 use flate2::read::MultiGzDecoder;
@@ -16,6 +15,7 @@ use url::Url;
 use whichlang::detect_language;
 use whichlang::Lang;
 
+use crate::util::slice_up_to;
 use crate::vector::EM_LEN;
 
 #[derive(Debug)]
@@ -26,18 +26,6 @@ pub struct PageEntry {
     pub vector: [f32; EM_LEN],
     pub url_len: u64,
     pub title_len: u64,
-}
-
-// See https://github.com/rust-lang/rfcs/issues/2566
-pub fn slice_up_to(s: &str, max_len: usize) -> &str {
-    if max_len >= s.len() {
-        return s;
-    }
-    let mut idx = max_len;
-    while !s.is_char_boundary(idx) {
-        idx -= 1;
-    }
-    &s[..idx]
 }
 
 struct RecordOwned {
