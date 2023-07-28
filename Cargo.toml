@@ -1,19 +1,9 @@
 [package]
-name = "semantic-search"
-version = "0.1.0"
+name = "arecibo"
+version = "0.0.0"
 edition = "2021"
 
-[[bin]]
-name= "search"
-path = "src/search.rs"
-
-[[bin]]
-name= "index"
-path = "src/index.rs"
-
-[[bin]]
-name= "convertembeddings"
-path = "src/convertembeddings.rs"
+[lib]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

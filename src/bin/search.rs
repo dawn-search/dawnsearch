@@ -10,12 +10,8 @@ use rust_bert::pipelines::sentence_embeddings::{
 };
 use std::env;
 
-use crate::index::distance;
-use crate::warc::{PageEntry, EM_LEN};
-
-mod index;
-#[path = "warc.rs"]
-mod warc;
+use arecibo::vector::{distance, EM_LEN};
+use arecibo::warc::PageEntry;
 
 fn main() -> anyhow::Result<()> {
     let args: Vec<String> = env::args().collect();

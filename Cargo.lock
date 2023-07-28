@@ -55,6 +55,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3b13c32d80ecc7ab747b80c3784bce54ee8a7a0cc4fbda9bf4cda2cf6fe90854"
 
 [[package]]
+name = "arecibo"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "flate2",
+ "indicatif 0.17.5",
+ "memmap2",
+ "readability",
+ "rust-bert",
+ "tch",
+ "torch-sys",
+ "url",
+ "whichlang",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1589,22 +1605,6 @@ checksum = "e932934257d3b408ed8f30db49d85ea163bfe74961f017f405b025af298f0c7a"
 dependencies = [
  "core-foundation-sys",
  "libc",
-]
-
-[[package]]
-name = "semantic-search"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "flate2",
- "indicatif 0.17.5",
- "memmap2",
- "readability",
- "rust-bert",
- "tch",
- "torch-sys",
- "url",
- "whichlang",
 ]
 
 [[package]]

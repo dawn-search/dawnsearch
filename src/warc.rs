@@ -16,7 +16,7 @@ use url::Url;
 use whichlang::detect_language;
 use whichlang::Lang;
 
-pub const EM_LEN: usize = 384; // 300 for fasttext
+use crate::vector::EM_LEN;
 
 #[derive(Debug)]
 #[repr(C)]
