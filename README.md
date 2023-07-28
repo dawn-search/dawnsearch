@@ -1,6 +1,6 @@
 # Arecibo Search
 
-Arecibo is a search engine you can run on your own computer. It can index WAR files, for example from Common Crawl. It uses semantic search, using MiniLM6v2. HTML is cleaned using readability-rs in order to only index the main content of the page.
+Arecibo is a search engine you can run on your own computer. It can index [WARC](https://en.wikipedia.org/wiki/WARC_(file_format)) files, for example from [Common Crawl](https://commoncrawl.org/the-data/get-started/). It uses semantic search, using [all-MiniLM-L6-v2](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2). HTML is cleaned using [readability-rs](https://github.com/kumabook/readability) in order to only index the main content of the page.
 
 The ultimate goal of Arecibo is to provide a fully open source and noncommercial alternative to Google.
 
@@ -21,7 +21,7 @@ Next, install libtorch. Follow the manual(!) installation steps from https://git
 
 If you want to run Arecibo on AWS EC2, follow the instructions from https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/install-nvidia-driver.html to install the required drivers.
 
-You can now download WAT files into a directory, for example into '../wat'.
+You can now download WARC files into a directory, for example into '../wat'. There is no need to extract them, the indexer will work on gz files.
 
 To index:
 
@@ -36,15 +36,15 @@ Feel free to open an issue if you encounter problems building Arecibo!
 # FAQ
 ## Why is it called 'Arecibo'?
 
-The Arecibo Telescope was the world's largest telescope for more than 50 years.
-It also appeared in the James Bond movie GoldenEye (1995), which is, to this day
+The [Arecibo Telescope](https://en.wikipedia.org/wiki/Arecibo_Telescope) was the world's largest telescope for more than 50 years.
+It also appeared in the James Bond movie [GoldenEye](https://en.wikipedia.org/wiki/GoldenEye) (1995), which is, to this day
 the favorite bond movie of the author.
 
 ## Why Rust?
 
 Rust is not the best platform to experiment with inference, though there are some
 nice libraries. The big advantage of Rust is that while it takes ten times as long
-to build something, it is then twice as fast, and uses a fraction of the memory.
+to build something, it is then twice as fast, and uses much less memory.
 This makes it much easier to host on left-over servers.
 
 ## How fast is it?
