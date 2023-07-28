@@ -1,3 +1,4 @@
+use std::io::Read;
 use std::{
     env, fs,
     time::{Duration, SystemTime, UNIX_EPOCH},
@@ -44,10 +45,15 @@ fn main() -> anyhow::Result<()> {
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
                 .as_secs();
-            let _ = conn.execute(
-                "INSERT INTO url (url, discovered) VALUES (?1, ?2)",
-                (&url, now),
-            );
+            if conn
+                .execute(
+                    "INSERT INTO url (url, discovered) VALUES (?1, ?2)",
+                    (&url, now),
+                )
+                .is_ok()
+            {
+                println!("Discovered {}", url);
+            }
         } else {
             println!("Ignoring invalid URL: {}", url);
         }
@@ -84,34 +90,34 @@ fn main() -> anyhow::Result<()> {
         ureq::AgentBuilder::new().user_agent("Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Arecibot/0.1; https://localhost/todo/fill/this/in) Chrome/115.0.0.0 Safari/537.36").build()
     }
 
-    let mut find_to_crawl =
-        conn.prepare("SELECT url FROM url WHERE crawled IS NULL ORDER BY discovered ASC LIMIT 1")?;
+    let mut find_to_crawl = conn.prepare(
+        "SELECT url, discovered FROM url WHERE crawled IS NULL ORDER BY discovered ASC LIMIT 1",
+    )?;
     let mut delete_url = conn.prepare("DELETE FROM url WHERE url = ?1")?;
     loop {
         let mut rows = find_to_crawl.query(())?;
         let mut found_some = false;
         while let Some(row) = rows.next()? {
             let url: String = row.get(0)?;
+            let discovered: u64 = row.get(1)?;
             found_some = true;
             delete_url.execute(&[&url])?;
 
             // Let's crawl.
-            let body = agent().get(&url).call()?.into_string()?;
-            let mut body_slice = slice_up_to(&body, 1024 * 250).as_bytes();
+            let mut body = agent().get(&url).call()?.into_reader().take(1024 * 250);
 
             let url = Url::parse(&url).unwrap();
             // TODO: main page of wikipedia does not extract correctly. Firefox reader works.
 
             let mut dom = parse_document(RcDom::default(), Default::default())
                 .from_utf8()
-                .read_from(&mut body_slice)
+                .read_from(&mut body)
                 .unwrap();
 
             let mut links = Vec::new();
             find_links(&dom.document, &mut links);
             for link in links {
                 if let Ok(link_url) = clean_url(&url, &link.href) {
-                    println!("{}", link_url);
                     insert(&conn, &link_url);
                 } else {
                     println!("Invalid URL for {:?}", link);
@@ -123,7 +129,7 @@ fn main() -> anyhow::Result<()> {
             extract_text(&cleaned_document, &mut clean, true);
 
             println!("");
-            println!("{}", url);
+            println!("{} {}", url, discovered);
             println!("{}", clean);
 
             std::thread::sleep(Duration::from_secs(2));
