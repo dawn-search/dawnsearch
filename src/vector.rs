@@ -35,10 +35,16 @@ pub fn find_embedding(
     found as f32 / total as f32
 }
 
+fn reduce_bits(x: f32) -> u8 {
+    let mult = 16.0 * 16.0;
+    let bits = ((x + 1.0) / 2.0 * mult) as u8;
+    bits
+}
+
 pub fn distance(a: &[f32; EM_LEN], b: &[f32; EM_LEN]) -> f32 {
-    let mut result: f32 = 0.0;
-    for (i, aa) in a.iter().enumerate() {
-        result += (*aa as f32 - b[i] as f32).powf(2.0);
+    let mut result: u32 = 0;
+    for i in 0..EM_LEN {
+        result += (reduce_bits(a[i]) as u32 - reduce_bits(b[i]) as u32).pow(2);
     }
-    result
+    result as f32
 }
