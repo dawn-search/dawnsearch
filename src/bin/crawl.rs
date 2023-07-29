@@ -7,9 +7,9 @@ use std::{
 use anyhow::Context;
 use html5ever::{parse_document, tendril::TendrilSink};
 use markup5ever_rcdom::RcDom;
-use rusqlite::Connection;
 
 use arecibo::extract::{extract, extract_text, find_links};
+use postgres::{Client, NoTls};
 use url::{ParseError, Url};
 
 fn main() -> anyhow::Result<()> {
@@ -17,68 +17,71 @@ fn main() -> anyhow::Result<()> {
     let restart = args.contains(&"--restart".to_owned());
 
     fs::create_dir_all("store")?;
-    let conn = Connection::open("store/crawl.sqlite")?;
-    conn.busy_timeout(Duration::from_millis(10000))?;
+
+    let mut client = Client::connect(
+        "host=localhost dbname=arecibo user=arecibo password=arecibo",
+        NoTls,
+    )?;
 
     // Create DB structure
-    conn.execute(
+    client.execute(
         "CREATE TABLE IF NOT EXISTS page (
             host TEXT NOT NULL,
             path TEXT NOT NULL,
-            discovered INTEGER NOT NULL,
-            crawled INTEGER
+            discovered BIGINT NOT NULL,
+            crawled BIGINT
         )",
-        (),
+        &[],
     )?;
-    conn.execute(
+    client.execute(
         "
         CREATE INDEX IF NOT EXISTS url_find_to_crawl on page(crawled, discovered)
     ",
-        (),
+        &[],
     )?;
-    conn.execute(
+    client.execute(
         "
         CREATE UNIQUE INDEX IF NOT EXISTS find_exists on page(host, path)
     ",
-        (),
+        &[],
     )?;
-    conn.execute(
+    client.execute(
         "CREATE TABLE IF NOT EXISTS host (
-            host TEXT NOT NULL,
+            url TEXT NOT NULL,
             pages INTEGER DEFAULT 0 NOT NULL
         )",
-        (),
+        &[],
     )?;
-    conn.execute(
+    client.execute(
         "
-        CREATE UNIQUE INDEX IF NOT EXISTS host_unique on host(host)
+        CREATE UNIQUE INDEX IF NOT EXISTS host_unique on host(url)
     ",
-        (),
+        &[],
     )?;
-    conn.execute(
+    client.execute(
         "
         CREATE INDEX IF NOT EXISTS find_host on host(pages)
     ",
-        (),
+        &[],
     )?;
 
     if restart {
-        conn.execute("UPDATE page SET crawled = NULL", ())?;
-        conn.execute("UPDATE host SET pages = 0", ())?;
+        client.execute("UPDATE page SET crawled = NULL", &[])?;
+        client.execute("UPDATE host SET pages = 0", &[])?;
     }
 
-    fn add_host(conn: &Connection, host: &str) -> anyhow::Result<()> {
+    fn add_host(conn: &mut Client, host: &str) -> anyhow::Result<()> {
         conn.execute(
-            "INSERT INTO host (host, pages) VALUES (?1, 0) ON CONFLICT(host) DO NOTHING",
-            [&host],
+            "INSERT INTO host (url, pages) VALUES ($1, 0) ON CONFLICT(url) DO NOTHING",
+            &[&host],
         )?;
         Ok(())
     }
-    fn request_for_host(conn: &Connection, host: &str) -> anyhow::Result<()> {
+    fn request_for_host(conn: &mut Client, host: &str) -> anyhow::Result<()> {
         conn.execute(
-            "INSERT INTO host (host, pages) VALUES (?1, 1) ON CONFLICT(host) DO UPDATE SET pages = pages + 1",
-            [&host],
-        )?;
+            "INSERT INTO host (url, pages) VALUES ($1, 1) ON CONFLICT(url) DO UPDATE SET pages = host.pages + 1",
+            &[&host],
+        ).context("request_for_host")?;
         Ok(())
     }
     fn timestamp() -> u64 {
@@ -87,7 +90,7 @@ fn main() -> anyhow::Result<()> {
             .unwrap()
             .as_secs()
     }
-    fn add_link(conn: &Connection, url: &str) -> anyhow::Result<()> {
+    fn add_link(mut conn: &mut Client, url: &str) -> anyhow::Result<()> {
         if let Ok(parsed) = Url::parse(url) {
             if parsed.port().is_some() {
                 println!("Ignoring URL with port: {}", url);
@@ -95,17 +98,17 @@ fn main() -> anyhow::Result<()> {
             };
 
             // Note that we silently convert all links to HTTPS.
-            let host = format!("https://{}", parsed.host().expect("host"));
+            let host = format!("{}://{}", parsed.scheme(), parsed.host().expect("host"));
             let path = parsed.path();
 
-            let now = timestamp();
+            let now = timestamp() as i64;
             let result = conn.execute(
-                "INSERT INTO page (host, path, discovered) VALUES (?1, ?2, ?3) ON CONFLICT DO NOTHING",
-                (&host, &path, now),
+                "INSERT INTO page (host, path, discovered) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+                &[&host, &path, &now],
             )?;
             if result > 0 {
                 // println!("Discovered {}", url);
-                add_host(&conn, &host)?;
+                add_host(&mut conn, &host)?;
             }
         } else {
             println!("Ignoring invalid URL: {}", url);
@@ -139,7 +142,7 @@ fn main() -> anyhow::Result<()> {
             continue;
         }
         println!("Adding {} to the list of URL's to crawl", url);
-        add_link(&conn, &url)?;
+        add_link(&mut client, &url)?;
     }
 
     // Let's go crawl!
@@ -151,28 +154,28 @@ fn main() -> anyhow::Result<()> {
             .build()
     }
 
-    let mut find_to_crawl = conn.prepare(
-        "SELECT page.host, path, discovered FROM page INNER JOIN host ON page.host = host.host WHERE crawled IS NULL ORDER BY host.pages ASC LIMIT 1",
+    let mut find_to_crawl = client.prepare(
+        "SELECT page.host, path, discovered FROM page INNER JOIN host ON page.host = host.url WHERE crawled IS NULL ORDER BY host.pages ASC LIMIT 1",
     )?;
     let mut mark_crawled =
-        conn.prepare("UPDATE page SET crawled = ?1 WHERE host = ?2 AND path = ?3")?;
+        client.prepare("UPDATE page SET crawled = $3 WHERE host = $1 AND path = $2")?;
     let mut pages_crawled = 0;
     loop {
-        let mut rows = find_to_crawl.query(())?;
+        let mut rows = client.query(&find_to_crawl, &[])?;
         let mut found_some = false;
-        while let Some(row) = rows.next()? {
-            let host: String = row.get(0)?;
-            let path: String = row.get(1)?;
-            let discovered: u64 = row.get(2)?;
+        for row in rows {
+            let host: String = row.get(0);
+            let path: String = row.get(1);
+            let discovered: i64 = row.get(2);
             found_some = true;
 
-            let now = timestamp();
-            mark_crawled.execute((now, &host, &path))?;
+            let now = timestamp() as i64;
+            client.execute(&mark_crawled, &[&host, &path, &now])?;
 
             let url = format!("{}{}", host, path);
 
             // Let's crawl.
-            request_for_host(&conn, &host)?;
+            request_for_host(&mut client, &host)?;
             let response = match agent().get(&url).call() {
                 Ok(r) => r,
                 Err(e) => {
@@ -200,7 +203,7 @@ fn main() -> anyhow::Result<()> {
             find_links(&dom.document, &mut links);
             for link in links {
                 if let Ok(link_url) = clean_url(&url, &link.href) {
-                    add_link(&conn, &link_url)?;
+                    add_link(&mut client, &link_url)?;
                 }
             }
 

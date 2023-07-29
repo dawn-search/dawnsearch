@@ -33,6 +33,18 @@ To search (interactive):
 
 Feel free to open an issue if you encounter problems building Arecibo!
 
+# Postgres setup
+
+    sudo apt install postgres
+    sudo pg_ctlcluster 12 main start
+    sudo -u postgres psql
+
+Run these commands:
+
+    create database arecibo;
+    create user arecibo with encrypted password 'arecibo';
+    grant all privileges on database arecibo to arecibo;
+
 # FAQ
 ## Why is it called 'Arecibo'?
 
