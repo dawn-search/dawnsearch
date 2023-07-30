@@ -1,17 +1,15 @@
-use std::fs::File;
 use std::io::{self, BufRead};
 use std::str;
 use std::time::Instant;
 use std::{self};
 
-use memmap2::{Mmap, MmapOptions};
 use rust_bert::pipelines::sentence_embeddings::{
     SentenceEmbeddingsBuilder, SentenceEmbeddingsModelType,
 };
 use std::env;
 
+use arecibo::document_embeddings::DocumentEmbeddings;
 use arecibo::vector::{distance, EM_LEN};
-use arecibo::warc::PageEntry;
 
 fn main() -> anyhow::Result<()> {
     let args: Vec<String> = env::args().collect();
@@ -20,44 +18,12 @@ fn main() -> anyhow::Result<()> {
     let model = SentenceEmbeddingsBuilder::remote(SentenceEmbeddingsModelType::AllMiniLmL6V2)
         .create_model()?;
 
-    //////////////
-
-    let mut emb_files: Vec<Mmap> = Vec::new();
-    let mut title_files: Vec<Mmap> = Vec::new();
-    let mut url_files: Vec<Mmap> = Vec::new();
-
-    let mut numfiles = 0;
-    for path in std::fs::read_dir(warc_dir).unwrap() {
-        numfiles += 1;
-        let filename = path.unwrap().path();
-        let mut url_filename = filename.clone();
-        let mut title_filename = filename.clone();
-        let s = filename.to_string_lossy();
-        if !s.ends_with(".warc.emb") {
-            continue;
-        }
-        eprintln!("{}\t{}", numfiles, s);
-
-        // Now we read back our data from the files.
-        let f = File::open(filename)?;
-        let mmap = unsafe { MmapOptions::new().map(&f)? };
-        emb_files.push(mmap);
-
-        url_filename.set_extension("url");
-        let f = File::open(url_filename)?;
-        let mmap = unsafe { MmapOptions::new().map(&f)? };
-        url_files.push(mmap);
-
-        title_filename.set_extension("title");
-        let f = File::open(title_filename)?;
-        let mmap = unsafe { MmapOptions::new().map(&f)? };
-        title_files.push(mmap);
-    }
+    let document_embeddings = DocumentEmbeddings::load(&warc_dir)?;
 
     struct ScoredBook {
         score: f32,
         file: usize,
-        index: usize,
+        entry: usize,
     }
 
     let stdin = io::stdin();
@@ -73,45 +39,37 @@ fn main() -> anyhow::Result<()> {
 
         let mut results: Vec<ScoredBook> = Vec::new();
 
-        let size = std::mem::size_of::<PageEntry>();
         let mut searched_pages_count = 0;
-        for (i, mmap) in emb_files.iter().enumerate() {
-            let mut pos = 0;
-            while pos + size < mmap.len() {
+        for page in 0..document_embeddings.files() {
+            for entry in 0..document_embeddings.entries(page) {
                 searched_pages_count += 1;
-                let p: &PageEntry = unsafe { &*mmap[pos..pos + size].as_ptr().cast() };
-
+                let p = document_embeddings.entry(page, entry);
                 let score = distance(&p.vector, &query_embedding);
+
                 if results.len() < 10 {
                     results.push(ScoredBook {
-                        file: i,
+                        file: page,
                         score,
-                        index: pos,
+                        entry,
                     });
                     continue;
                 }
                 if score < results[9].score {
                     results[9] = ScoredBook {
-                        file: i,
+                        file: page,
                         score,
-                        index: pos,
+                        entry,
                     };
                     results.sort_by(|a, b| a.score.partial_cmp(&b.score).unwrap());
                 }
-
-                pos += size;
             }
         }
 
         //////////////
 
         for r in results {
-            let p: &PageEntry =
-                unsafe { &*emb_files[r.file][r.index..r.index + size].as_ptr().cast() };
-            let url: &[u8] =
-                &url_files[r.file][p.url_pos as usize..(p.url_pos + p.url_len as u64) as usize];
-            let title: &[u8] = &title_files[r.file]
-                [p.title_pos as usize..(p.title_pos + p.title_len as u64) as usize];
+            let url: &[u8] = document_embeddings.url(r.file, r.entry);
+            let title: &[u8] = document_embeddings.title(r.file, r.entry);
             println!(
                 "{}: {} - {}",
                 r.score,
