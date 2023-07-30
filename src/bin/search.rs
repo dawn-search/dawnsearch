@@ -16,6 +16,7 @@ fn main() -> anyhow::Result<()> {
     let warc_dir = &args[1];
 
     let model = SentenceEmbeddingsBuilder::remote(SentenceEmbeddingsModelType::AllMiniLmL6V2)
+        .with_device(tch::Device::Cpu)
         .create_model()?;
 
     let document_embeddings = DocumentEmbeddings::load(&warc_dir)?;
@@ -32,12 +33,12 @@ fn main() -> anyhow::Result<()> {
         println!("");
         let query = q.unwrap();
 
-        let start = Instant::now();
-
         let q = &model.encode(&[query]).unwrap()[0];
         let query_embedding: &[f32; EM_LEN] = q.as_slice().try_into().unwrap();
 
         let mut results: Vec<ScoredBook> = Vec::new();
+
+        let start = Instant::now();
 
         let mut searched_pages_count = 0;
         for page in 0..document_embeddings.files() {

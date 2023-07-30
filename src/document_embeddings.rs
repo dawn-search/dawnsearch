@@ -57,8 +57,8 @@ impl DocumentEmbeddings {
         self.emb_files.len()
     }
 
-    pub fn entries(&self, page: usize) -> usize {
-        self.emb_files[page].len() / std::mem::size_of::<PageEntry>()
+    pub fn entries(&self, file: usize) -> usize {
+        self.emb_files[file].len() / std::mem::size_of::<PageEntry>()
     }
 
     pub fn entry(&self, file: usize, entry: usize) -> &PageEntry {
@@ -68,6 +68,19 @@ impl DocumentEmbeddings {
                 .as_ptr()
                 .cast()
         };
+    }
+
+    pub fn linear_to_segmented(&self, mut index: usize) -> (usize, usize) {
+        let mut file = 0;
+        loop {
+            let entries = self.entries(file);
+            if index < entries {
+                break;
+            }
+            index -= entries;
+            file += 1;
+        }
+        (file, index)
     }
 
     pub fn url(&self, file: usize, entry: usize) -> &[u8] {
