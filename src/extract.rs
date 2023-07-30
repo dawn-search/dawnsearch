@@ -64,7 +64,7 @@ pub fn find_links(handle: &Handle, links: &mut Vec<Link>) {
     }
 }
 
-pub fn extract(mut dom: &mut RcDom, url: &Url) -> Rc<markup5ever_rcdom::Node> {
+pub fn extract(mut dom: &mut RcDom, url: &Url) -> (Rc<markup5ever_rcdom::Node>, String) {
     let mut title = String::new();
     let mut candidates = BTreeMap::new();
     let mut nodes = BTreeMap::new();
@@ -94,5 +94,5 @@ pub fn extract(mut dom: &mut RcDom, url: &Url) -> Rc<markup5ever_rcdom::Node> {
     let node = top_candidate.node.clone();
     scorer::clean(&mut dom, Path::new(id), node.clone(), url, &candidates);
 
-    node
+    (node, title)
 }

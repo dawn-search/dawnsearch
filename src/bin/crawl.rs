@@ -207,7 +207,7 @@ fn main() -> anyhow::Result<()> {
                 }
             }
 
-            let cleaned_document = extract(&mut dom, &url);
+            let (cleaned_document, _title) = extract(&mut dom, &url);
             let mut clean: String = String::new();
             extract_text(&cleaned_document, &mut clean, true);
 

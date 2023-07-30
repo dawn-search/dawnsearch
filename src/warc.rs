@@ -7,14 +7,19 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 use flate2::read::MultiGzDecoder;
+use html5ever::parse_document;
+use html5ever::tendril::TendrilSink;
 use indicatif::ProgressBar;
 use indicatif::ProgressStyle;
+use markup5ever_rcdom::RcDom;
 use rust_bert::pipelines::sentence_embeddings::SentenceEmbeddingsModel;
 use std::io::Read;
 use url::Url;
 use whichlang::detect_language;
 use whichlang::Lang;
 
+use crate::extract::extract;
+use crate::extract::extract_text;
 use crate::util::slice_up_to;
 use crate::vector::EM_LEN;
 
@@ -165,9 +170,21 @@ pub fn extract_records_and_add_to_index(
         let mut body_slice = slice_up_to(&body, 1024 * 250).as_bytes();
 
         let url = Url::parse(&uri).unwrap();
-        let product = readability::extractor::extract(&mut body_slice, &url).unwrap();
 
-        let clean = product.text;
+        let mut dom = match parse_document(RcDom::default(), Default::default())
+            .from_utf8()
+            .read_from(&mut body_slice)
+        {
+            Ok(dom) => dom,
+            Err(e) => {
+                println!("Failed to read {}: {}", e, url);
+                continue;
+            }
+        };
+
+        let (cleaned_document, title) = extract(&mut dom, &url);
+        let mut clean: String = String::new();
+        extract_text(&cleaned_document, &mut clean, true);
 
         // 25 seconds (with 10kb payload)
 
@@ -175,7 +192,7 @@ pub fn extract_records_and_add_to_index(
             continue;
         }
 
-        let title = slice_up_to(&product.title, 200);
+        let title = slice_up_to(&title, 200);
 
         let lang = detect_language(slice_up_to(&clean, 2048));
         if lang != Lang::Eng {
@@ -205,10 +222,11 @@ pub fn extract_records_and_add_to_index(
         title_pos += title_len as u64;
 
         added += 1;
-        if added % 100 == 0 {
+        let interval = 50;
+        if added % interval == 0 {
             let duration = start.elapsed();
-            let speed = 100.0 / duration.as_millis() as f32 * 1000.0;
-            let per_embedding = duration.as_millis() as f32 / 100.0;
+            let speed = interval as f32 / duration.as_millis() as f32 * 1000.0;
+            let per_embedding = duration.as_millis() as f32 / interval as f32;
             progress.set_message(format!("{:.0}/s {:.1} ms {}", speed, per_embedding, added));
             start = Instant::now();
         }
