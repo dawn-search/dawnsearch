@@ -154,14 +154,14 @@ fn main() -> anyhow::Result<()> {
             .build()
     }
 
-    let mut find_to_crawl = client.prepare(
+    let find_to_crawl = client.prepare(
         "SELECT page.host, path, discovered FROM page INNER JOIN host ON page.host = host.url WHERE crawled IS NULL ORDER BY host.pages ASC LIMIT 1",
     )?;
-    let mut mark_crawled =
+    let mark_crawled =
         client.prepare("UPDATE page SET crawled = $3 WHERE host = $1 AND path = $2")?;
     let mut pages_crawled = 0;
     loop {
-        let mut rows = client.query(&find_to_crawl, &[])?;
+        let rows = client.query(&find_to_crawl, &[])?;
         let mut found_some = false;
         for row in rows {
             let host: String = row.get(0);
