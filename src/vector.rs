@@ -35,10 +35,16 @@ pub fn find_embedding(
     found as f32 / total as f32
 }
 
-fn reduce_bits(x: f32) -> u8 {
-    let mult = 16.0 * 16.0;
-    let bits = ((x + 1.0) / 2.0 * mult) as u8;
-    bits
+/**
+ * The range of i8 is -128 to 127.
+ */
+fn reduce_bits(x: f32) -> i8 {
+    let mult = 16.0 * 16.0 / 2.0;
+    let mut bits = (x * mult) as i32;
+    if bits == 128 {
+        bits = 127;
+    }
+    bits as i8
 }
 
 pub fn distance(a: &[f32; EM_LEN], b: &[f32; EM_LEN]) -> f32 {
@@ -47,4 +53,12 @@ pub fn distance(a: &[f32; EM_LEN], b: &[f32; EM_LEN]) -> f32 {
         result += (reduce_bits(a[i]) as u32 - reduce_bits(b[i]) as u32).pow(2);
     }
     result as f32
+}
+
+pub fn distance_i8(a: &[i8; EM_LEN], b: &[i8; EM_LEN]) -> u32 {
+    let mut result: u32 = 0;
+    for i in 0..EM_LEN {
+        result += (a[i] as i32 - b[i] as i32).pow(2) as u32;
+    }
+    result
 }

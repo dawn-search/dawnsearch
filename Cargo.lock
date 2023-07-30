@@ -65,6 +65,7 @@ dependencies = [
  "markup5ever_rcdom",
  "memmap2",
  "postgres",
+ "rand 0.8.5",
  "readability",
  "rust-bert",
  "tch",
