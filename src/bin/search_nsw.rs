@@ -1,13 +1,17 @@
+use std::collections::HashSet;
+use std::hash::Hash;
 use std::io::{self, BufRead};
 use std::time::Instant;
-use std::{self};
+use std::{self, any};
 use std::{result, str};
 
+use rand::Rng;
 use rust_bert::pipelines::sentence_embeddings::{
     SentenceEmbeddingsBuilder, SentenceEmbeddingsModelType,
 };
 use std::env;
 
+use arecibo::best_results::{BestResults, NodeReference};
 use arecibo::document_embeddings::DocumentEmbeddings;
 use arecibo::vector::{distance, distance_upper_bound, EM_LEN};
 
@@ -15,71 +19,108 @@ type Address = [f32; EM_LEN];
 
 struct NswNode {
     address: Address,
-    peers: Vec<usize>,
+    peers: Vec<NodeReference>,
 }
 
 struct Nsw {
     nodes: Vec<NswNode>,
-    results: Vec<SearchResult>,
-}
-
-#[derive(Clone)]
-struct SearchResult {
-    id: usize,
-    score: f32,
 }
 
 const DEBUG_SEARCH: bool = false;
 
 impl Nsw {
     fn new() -> Nsw {
-        Nsw {
-            nodes: Vec::new(),
-            results: Vec::new(),
-        }
+        Nsw { nodes: Vec::new() }
     }
 
     fn insert(&mut self, address: &Address) {
-        self.search(&address, 30);
+        let results = self.search(&address, 30, 0);
         // Insert links from new node.
 
+        let mut peers: Vec<NodeReference> = Vec::new();
+        for r in results.results() {
+            if !peers.iter().any(|x| x.id == r.id) {
+                peers.push(r.clone());
+            }
+        }
+        // peers.sort_by(|a, b| b.distance.partial_cmp(&a.distance).unwrap());
         let node = NswNode {
             address: address.clone(),
-            peers: self.results.iter().map(|x| x.id).collect(),
+            peers,
         };
 
         let node_id = self.nodes.len();
 
         // Insert links to new node.
         for other in &node.peers {
-            self.nodes[*other].peers.push(node_id);
+            self.nodes[other.id].peers.push(NodeReference {
+                id: node_id,
+                distance: other.distance,
+            });
+            // self.nodes[other.id]
+            //     .peers
+            //     .sort_by(|a, b| b.distance.partial_cmp(&a.distance).unwrap());
         }
 
         self.nodes.push(node);
     }
 
-    fn search(&mut self, address: &Address, count: usize) {
-        if self.nodes.len() == 0 {
-            self.results.clear();
+    fn expand(&self, address: &Address, mut results: &mut BestResults) {
+        let mut seen = HashSet::new();
+        results.sort();
+        let targets = results.results().clone();
+        for t in targets {
+            self.expand_inner(address, t.id, &mut seen, &mut results);
+            break;
+        }
+    }
+
+    fn expand_inner(
+        &self,
+        address: &Address,
+        node_id: usize,
+        seen: &mut HashSet<usize>,
+        results: &mut BestResults,
+    ) {
+        if seen.contains(&node_id) {
             return;
         }
-        let mut worst_result_index = 0;
-        let mut worst_score = distance(&self.nodes[0].address, &address);
-
-        self.results.fill(SearchResult {
-            id: 0,
-            score: worst_score,
+        seen.insert(node_id);
+        let node = &self.nodes[node_id];
+        let dist = distance(&node.address, address);
+        if dist >= results.worst_distance() {
+            return;
+        }
+        results.insert(NodeReference {
+            id: node_id,
+            distance: dist,
         });
-        self.results.resize(
-            count,
-            SearchResult {
-                id: 0,
-                score: worst_score,
-            },
-        );
+        for x in &node.peers {
+            self.expand_inner(address, x.id, seen, results);
+        }
+    }
 
-        let mut node_id = 0;
-        let mut node_score = worst_score;
+    fn search(&mut self, address: &Address, count: usize, start: usize) -> BestResults {
+        let mut results = self.search2(address, count, start);
+        if results.len() == 0 {
+            return results;
+        }
+        self.expand(address, &mut results);
+        results
+    }
+
+    fn search2(&mut self, address: &Address, count: usize, start: usize) -> BestResults {
+        if self.nodes.len() == 0 {
+            return BestResults::new(0);
+        }
+        let mut node_id = start;
+        let mut node_score = distance(&self.nodes[node_id].address, &address);
+
+        let mut results = BestResults::new(count);
+        results.insert(NodeReference {
+            id: node_id,
+            distance: node_score,
+        });
 
         if DEBUG_SEARCH {
             println!(
@@ -90,61 +131,30 @@ impl Nsw {
 
         loop {
             if self.nodes[node_id].peers.len() == 0 {
-                break; // Should not happen, but you never know.
+                break; // Can happen for our first node.
             }
             let mut best_next_peer_id = None;
             let mut best_next_peer_score = node_score;
-            for (peer_index, peer_id) in self.nodes[node_id].peers.iter().enumerate() {
-                if *peer_id == node_id {
-                    continue; // Don't follow the link back.
-                }
-                if self.results.iter().any(|x| x.id == *peer_id) {
-                    continue; // We already have this one.
-                }
-
-                let peer = &self.nodes[*peer_id];
+            for (peer_index, peer_ref) in self.nodes[node_id].peers.iter().enumerate() {
+                let peer = &self.nodes[peer_ref.id];
                 let score = distance(&peer.address, &address);
 
-                // Update our result list.
-                if self.results.len() < count {
-                    // Just add, keeping track of worst_score.
-                    if score > worst_score {
-                        worst_score = score;
-                        worst_result_index = self.results.len();
-                    }
-                    self.results.push(SearchResult {
-                        id: *peer_id,
-                        score,
-                    });
-                } else {
-                    if score < worst_score {
-                        // Put in list of results.
-                        worst_score = score;
-                        self.results[worst_result_index] = SearchResult {
-                            id: *peer_id,
-                            score,
-                        };
-                        // Recalculate worst, as the newly placed one may quite good.
-                        for (i, result) in self.results.iter().enumerate() {
-                            if result.score > worst_score {
-                                worst_score = result.score;
-                                worst_result_index = i;
-                            }
-                        }
-                    }
+                results.insert(NodeReference {
+                    id: peer_ref.id,
+                    distance: score,
+                });
+                if DEBUG_SEARCH {
+                    println!("Have {} results ", results.len());
                 }
 
                 // Find next peer to move into.
                 if score < best_next_peer_score {
-                    best_next_peer_id = Some(peer_id);
+                    best_next_peer_id = Some(peer_ref);
                     best_next_peer_score = score;
-
-                    // Eager
-                    break;
                 }
             }
             if let Some(s) = best_next_peer_id {
-                node_id = *s;
+                node_id = s.id;
                 node_score = best_next_peer_score;
                 if DEBUG_SEARCH {
                     println!("Continuing with node {} with score {}", node_id, node_score);
@@ -154,13 +164,14 @@ impl Nsw {
                 if DEBUG_SEARCH {
                     println!(
                         "Search completed with {} entries, worst score {}",
-                        self.results.len(),
-                        worst_score
+                        results.len(),
+                        results.worst_distance()
                     );
                 }
                 break;
             }
         }
+        results
     }
 }
 
@@ -176,6 +187,8 @@ fn main() -> anyhow::Result<()> {
 
     let mut searched_pages_count = 0;
 
+    let start = Instant::now();
+
     let mut nsw = Nsw::new();
     for file in 0..document_embeddings.files() {
         eprint!("File {}", file);
@@ -188,8 +201,11 @@ fn main() -> anyhow::Result<()> {
             }
         }
         println!("");
-        //        break;
     }
+
+    let duration = start.elapsed();
+    println!("");
+    println!("Generated index in {:.1} ms", duration.as_millis());
 
     let stdin = io::stdin();
     eprint!("> ");
@@ -202,16 +218,24 @@ fn main() -> anyhow::Result<()> {
 
         let start = Instant::now();
 
-        nsw.search(&query_embedding, 10);
-        nsw.results
-            .sort_by(|a, b| a.score.partial_cmp(&b.score).unwrap());
-        for result in &nsw.results {
+        let mut rng = rand::thread_rng();
+        let node_id = rng.gen_range(0..nsw.nodes.len());
+
+        let mut results = nsw.search(&query_embedding, 10, node_id);
+        results.sort();
+
+        let mut count = 0;
+        for result in results.results() {
+            count += 1;
+            if count > 10 {
+                break;
+            }
             let (file, entry) = document_embeddings.linear_to_segmented(result.id);
             let url: &[u8] = document_embeddings.url(file, entry);
             let title: &[u8] = document_embeddings.title(file, entry);
             println!(
                 "{}: {} - {}",
-                result.score,
+                result.distance,
                 unsafe { str::from_utf8_unchecked(title) },
                 unsafe { str::from_utf8_unchecked(url) },
             );
