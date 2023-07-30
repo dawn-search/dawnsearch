@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use rand::Rng;
+
 pub const EM_LEN: usize = 384; // 300 for fasttext
 
 pub fn find_embedding(
@@ -80,4 +82,24 @@ pub fn distance_i8(a: &[i8; EM_LEN], b: &[i8; EM_LEN]) -> u32 {
         result += (a[i] as i32 - b[i] as i32).pow(2) as u32;
     }
     result
+}
+
+/**
+ * Random unit length vector.
+ */
+pub fn random_address() -> [f32; EM_LEN] {
+    let mut rng = rand::thread_rng();
+    let mut address: [f32; EM_LEN] = [0.0; EM_LEN];
+    for x in 0..EM_LEN {
+        address[x] = rng.gen();
+    }
+    let length = vector_length(&address);
+    for x in 0..EM_LEN {
+        address[x] /= length;
+    }
+    address
+}
+
+pub fn vector_length(v: &[f32; EM_LEN]) -> f32 {
+    distance(v, &[0.0; EM_LEN]).sqrt()
 }

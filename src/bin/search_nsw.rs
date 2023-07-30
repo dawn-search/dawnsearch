@@ -1,9 +1,8 @@
 use std::collections::HashSet;
-use std::hash::Hash;
 use std::io::{self, BufRead};
+use std::str;
 use std::time::Instant;
-use std::{self, any};
-use std::{result, str};
+use std::{self, cmp};
 
 use rand::Rng;
 use rust_bert::pipelines::sentence_embeddings::{
@@ -13,7 +12,7 @@ use std::env;
 
 use arecibo::best_results::{BestResults, NodeReference};
 use arecibo::document_embeddings::DocumentEmbeddings;
-use arecibo::vector::{distance, distance_upper_bound, EM_LEN};
+use arecibo::vector::{distance, random_address, EM_LEN};
 
 type Address = [f32; EM_LEN];
 
@@ -27,6 +26,7 @@ struct Nsw {
 }
 
 const DEBUG_SEARCH: bool = false;
+const STRUCTURE_NODES: usize = 10;
 
 impl Nsw {
     fn new() -> Nsw {
@@ -34,7 +34,11 @@ impl Nsw {
     }
 
     fn insert(&mut self, address: &Address) {
-        let results = self.search(&address, 30, 0);
+        let mut rng = rand::thread_rng();
+        let m = cmp::min(STRUCTURE_NODES, self.nodes.len());
+        let node_id = if m > 0 { rng.gen_range(0..m) } else { 0 };
+
+        let results = self.search(&address, 16, node_id);
         // Insert links from new node.
 
         let mut peers: Vec<NodeReference> = Vec::new();
@@ -43,7 +47,10 @@ impl Nsw {
                 peers.push(r.clone());
             }
         }
-        // peers.sort_by(|a, b| b.distance.partial_cmp(&a.distance).unwrap());
+        let sort = true; // The sort really helps with getting to the right spot.
+        if sort {
+            peers.sort_by(|a, b| b.distance.partial_cmp(&a.distance).unwrap());
+        }
         let node = NswNode {
             address: address.clone(),
             peers,
@@ -57,9 +64,11 @@ impl Nsw {
                 id: node_id,
                 distance: other.distance,
             });
-            // self.nodes[other.id]
-            //     .peers
-            //     .sort_by(|a, b| b.distance.partial_cmp(&a.distance).unwrap());
+            if sort {
+                self.nodes[other.id]
+                    .peers
+                    .sort_by(|a, b| b.distance.partial_cmp(&a.distance).unwrap());
+            }
         }
 
         self.nodes.push(node);
@@ -71,7 +80,7 @@ impl Nsw {
         let targets = results.results().clone();
         for t in targets {
             self.expand_inner(address, t.id, &mut seen, &mut results);
-            break;
+            // break;
         }
     }
 
@@ -190,6 +199,10 @@ fn main() -> anyhow::Result<()> {
     let start = Instant::now();
 
     let mut nsw = Nsw::new();
+
+    for _i in 0..STRUCTURE_NODES {
+        nsw.insert(&random_address());
+    }
     for file in 0..document_embeddings.files() {
         eprint!("File {}", file);
         for entry in 0..document_embeddings.entries(file) {
@@ -201,6 +214,7 @@ fn main() -> anyhow::Result<()> {
             }
         }
         println!("");
+        // break;
     }
 
     let duration = start.elapsed();
@@ -209,9 +223,15 @@ fn main() -> anyhow::Result<()> {
 
     let stdin = io::stdin();
     eprint!("> ");
+    let mut previous_query = String::new();
     for q in stdin.lock().lines() {
         println!("");
-        let query = q.unwrap();
+        let mut query = q.unwrap();
+        if query.is_empty() {
+            query = previous_query.clone();
+        } else {
+            previous_query = query.clone();
+        }
 
         let q = &model.encode(&[query]).unwrap()[0];
         let query_embedding: &[f32; EM_LEN] = q.as_slice().try_into().unwrap();
@@ -219,9 +239,9 @@ fn main() -> anyhow::Result<()> {
         let start = Instant::now();
 
         let mut rng = rand::thread_rng();
-        let node_id = rng.gen_range(0..nsw.nodes.len());
+        let node_id = rng.gen_range(0..STRUCTURE_NODES);
 
-        let mut results = nsw.search(&query_embedding, 10, node_id);
+        let mut results = nsw.search(&query_embedding, 20, node_id);
         results.sort();
 
         let mut count = 0;
@@ -230,14 +250,20 @@ fn main() -> anyhow::Result<()> {
             if count > 10 {
                 break;
             }
-            let (file, entry) = document_embeddings.linear_to_segmented(result.id);
+            if result.id < STRUCTURE_NODES {
+                println!("*** {}", result.id);
+                continue;
+            }
+            let (file, entry) =
+                document_embeddings.linear_to_segmented(result.id - STRUCTURE_NODES);
+            let e = document_embeddings.entry(file, entry);
             let url: &[u8] = document_embeddings.url(file, entry);
             let title: &[u8] = document_embeddings.title(file, entry);
             println!(
                 "{}: {} - {}",
                 result.distance,
                 unsafe { str::from_utf8_unchecked(title) },
-                unsafe { str::from_utf8_unchecked(url) },
+                unsafe { str::from_utf8_unchecked(url) }
             );
         }
         let duration = start.elapsed();
