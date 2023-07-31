@@ -72,6 +72,8 @@ fn main() -> anyhow::Result<()> {
         // Read back the tags
         let results = index.search(query_embedding, 10).unwrap();
 
+        let duration = start.elapsed();
+
         let mut count = 0;
         for (distance, id) in zip(results.distances, results.labels) {
             count += 1;
@@ -89,13 +91,12 @@ fn main() -> anyhow::Result<()> {
                 unsafe { str::from_utf8_unchecked(url) }
             );
         }
-        let duration = start.elapsed();
         let fraction = searched_pages_count as f32 / (80000.0 * 7000.0);
         println!("");
         println!(
-            "Searched {} pages in {:.1} ms ({:.2}% of the common crawl database)",
+            "Searched {} pages in {} us ({:.2}% of the common crawl database)",
             searched_pages_count,
-            duration.as_millis(),
+            duration.as_micros(),
             fraction * 100.0
         );
         println!("");

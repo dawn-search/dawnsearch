@@ -32,7 +32,7 @@ impl Node {
         for entry in &self.entries {
             best.insert(NodeReference::<u64> {
                 id: entry.id,
-                distance: address.distance(&entry.address),
+                distance: address.distance_ip(&entry.address),
             });
         }
     }
@@ -82,7 +82,7 @@ impl BucketSearch {
         for (node_id, node) in self.nodes.iter().enumerate() {
             best.insert(NodeReference::<u64> {
                 id: node_id,
-                distance: address.distance(&node.center),
+                distance: address.distance_ip(&node.center),
             });
         }
         best
@@ -149,6 +149,8 @@ fn main() -> anyhow::Result<()> {
         bucket_search.search(&query_embedding.to_i16(), &mut results);
         results.sort();
 
+        let duration = start.elapsed();
+
         let mut count = 0;
         for result in results.results() {
             count += 1;
@@ -167,13 +169,12 @@ fn main() -> anyhow::Result<()> {
                 unsafe { str::from_utf8_unchecked(url) }
             );
         }
-        let duration = start.elapsed();
         let fraction = searched_pages_count as f32 / (80000.0 * 7000.0);
         println!("");
         println!(
-            "Searched {} pages in {:.1} ms ({:.2}% of the common crawl database)",
+            "Searched {} pages in {} us ({:.2}% of the common crawl database)",
             searched_pages_count,
-            duration.as_millis(),
+            duration.as_micros(),
             fraction * 100.0
         );
         println!("");

@@ -27,11 +27,16 @@ impl ToI16 for Embedding<f32> {
 
 pub trait Distance<T: SupportedNum, Y> {
     fn distance(&self, other: &Embedding<T>) -> Y;
+    fn distance_ip(&self, other: &Embedding<T>) -> Y;
 }
 
 impl Distance<f32, f32> for Embedding<f32> {
     fn distance(&self, b: &Embedding<f32>) -> f32 {
         zip(self, b).map(|(a, b)| (a - b).powf(2.0)).sum()
+    }
+
+    fn distance_ip(&self, b: &Embedding<f32>) -> f32 {
+        zip(self, b).map(|(a, b)| a * b).sum()
     }
 }
 
@@ -40,6 +45,12 @@ impl Distance<i16, u64> for Embedding<i16> {
         zip(self, b)
             .map(|(a, b)| (*a as i64 - *b as i64).pow(2))
             .sum::<i64>() as u64
+    }
+    fn distance_ip(&self, b: &Embedding<i16>) -> u64 {
+        (i64::MAX
+            - zip(self, b)
+                .map(|(a, b)| *a as i64 * *b as i64)
+                .sum::<i64>()) as u64
     }
 }
 
