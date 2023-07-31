@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::iter::zip;
 
 use rand::Rng;
 
@@ -49,21 +50,36 @@ fn reduce_bits(x: f32) -> i16 {
     bits as i16
 }
 
-pub fn distance(a: &[f32; EM_LEN], b: &[f32; EM_LEN]) -> f32 {
+/**
+ * Cosine distance.
+ *
+ * Note: much slower, and doesn't seem to have quality benefits.
+ */
+pub fn distance_cosine(a: &[f32; EM_LEN], b: &[f32; EM_LEN]) -> f32 {
     let mut result: f32 = 0.0;
     for i in 0..EM_LEN {
-        result += (a[i] - b[i]).powf(2.0);
+        result += a[i] * b[i]
     }
-    result as f32
+    1.0 - result
 }
 
-pub fn distance_upper_bound(a: &[f32; EM_LEN], b: &[f32; EM_LEN], limit: f32) -> f32 {
+pub fn distance_l2(a: &[f32; EM_LEN], b: &[f32; EM_LEN]) -> f32 {
+    zip(a, b).map(|(a, b)| (a - b).powf(2.0)).sum()
+}
+
+pub fn distance(a: &[f32; EM_LEN], b: &[f32; EM_LEN]) -> f32 {
+    distance_l2(a, b)
+}
+
+pub fn distance_upper_bound(a: &[f32; EM_LEN], b: &[f32; EM_LEN], _limit: f32) -> f32 {
     let mut result: f32 = 0.0;
     for i in 0..EM_LEN {
         result += (a[i] - b[i]).powf(2.0);
-        if result > limit {
-            return limit;
-        }
+        // Float additions are not vectorized anyway.
+        // This is < 10% faster, so not really worth it.
+        // if result > limit {
+        //     return f32::INFINITY;
+        // }
     }
     result as f32
 }
