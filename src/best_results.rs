@@ -1,26 +1,28 @@
+use crate::vector::SupportedNum;
+
 #[derive(Clone)]
-pub struct NodeReference {
+pub struct NodeReference<T: SupportedNum> {
     pub id: usize,
-    pub distance: f32,
+    pub distance: T,
 }
 
-pub struct BestResults {
-    results: Vec<NodeReference>,
+pub struct BestResults<T: SupportedNum> {
+    results: Vec<NodeReference<T>>,
     worst_result_index: usize,
-    worst_distance: f32,
+    worst_distance: T,
     size: usize,
 }
 
-impl BestResults {
-    pub fn new(size: usize) -> BestResults {
+impl<T: SupportedNum> BestResults<T> {
+    pub fn new(size: usize) -> BestResults<T> {
         BestResults {
             results: Vec::with_capacity(size),
             worst_result_index: 0,
-            worst_distance: 0.0,
+            worst_distance: T::zero(),
             size,
         }
     }
-    pub fn insert(&mut self, r: NodeReference) -> bool {
+    pub fn insert(&mut self, r: NodeReference<T>) -> bool {
         if self.results.len() < self.size {
             if self.contains_id(r.id) {
                 return false;
@@ -57,7 +59,7 @@ impl BestResults {
         self.worst_distance = self.results[self.results.len() - 1].distance;
     }
 
-    pub fn results(&self) -> &Vec<NodeReference> {
+    pub fn results(&self) -> &Vec<NodeReference<T>> {
         &self.results
     }
 
@@ -69,7 +71,7 @@ impl BestResults {
         self.results.clear();
     }
 
-    pub fn worst_distance(&self) -> f32 {
+    pub fn worst_distance(&self) -> T {
         return self.worst_distance;
     }
 

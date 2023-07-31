@@ -21,14 +21,14 @@ use whichlang::Lang;
 use crate::extract::extract;
 use crate::extract::extract_text;
 use crate::util::slice_up_to;
-use crate::vector::EM_LEN;
+use crate::vector::Embedding;
 
 #[derive(Debug)]
 #[repr(C)]
 pub struct PageEntry {
     pub url_pos: u64,
     pub title_pos: u64,
-    pub vector: [f32; EM_LEN],
+    pub vector: Embedding<f32>,
     pub url_len: u64,
     pub title_len: u64,
 }

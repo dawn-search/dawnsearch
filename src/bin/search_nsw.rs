@@ -12,13 +12,13 @@ use std::env;
 
 use arecibo::best_results::{BestResults, NodeReference};
 use arecibo::document_embeddings::DocumentEmbeddings;
-use arecibo::vector::{distance, random_address, EM_LEN};
+use arecibo::vector::{random_address, Distance, EM_LEN};
 
-type Address = [f32; EM_LEN];
+use arecibo::vector::Embedding;
 
 struct NswNode {
-    address: Address,
-    peers: Vec<NodeReference>,
+    address: Embedding<f32>,
+    peers: Vec<NodeReference<f32>>,
 }
 
 struct Nsw {
@@ -33,7 +33,7 @@ impl Nsw {
         Nsw { nodes: Vec::new() }
     }
 
-    fn insert(&mut self, address: &Address) {
+    fn insert(&mut self, address: &Embedding<f32>) {
         let mut rng = rand::thread_rng();
         let m = cmp::min(STRUCTURE_NODES, self.nodes.len());
         let node_id = if m > 0 { rng.gen_range(0..m) } else { 0 };
@@ -41,7 +41,7 @@ impl Nsw {
         let results = self.search(&address, 16, node_id);
         // Insert links from new node.
 
-        let mut peers: Vec<NodeReference> = Vec::new();
+        let mut peers: Vec<NodeReference<f32>> = Vec::new();
         for r in results.results() {
             if !peers.iter().any(|x| x.id == r.id) {
                 peers.push(r.clone());
@@ -74,7 +74,7 @@ impl Nsw {
         self.nodes.push(node);
     }
 
-    fn expand(&self, address: &Address, mut results: &mut BestResults) {
+    fn expand(&self, address: &Embedding<f32>, mut results: &mut BestResults<f32>) {
         let mut seen = HashSet::new();
         results.sort();
         let targets = results.results().clone();
@@ -86,17 +86,17 @@ impl Nsw {
 
     fn expand_inner(
         &self,
-        address: &Address,
+        address: &Embedding<f32>,
         node_id: usize,
         seen: &mut HashSet<usize>,
-        results: &mut BestResults,
+        results: &mut BestResults<f32>,
     ) {
         if seen.contains(&node_id) {
             return;
         }
         seen.insert(node_id);
         let node = &self.nodes[node_id];
-        let dist = distance(&node.address, address);
+        let dist = Distance::distance(&node.address, &address);
         if dist >= results.worst_distance() {
             return;
         }
@@ -109,7 +109,7 @@ impl Nsw {
         }
     }
 
-    fn search(&mut self, address: &Address, count: usize, start: usize) -> BestResults {
+    fn search(&mut self, address: &Embedding<f32>, count: usize, start: usize) -> BestResults<f32> {
         let mut results = self.search2(address, count, start);
         if results.len() == 0 {
             return results;
@@ -118,12 +118,17 @@ impl Nsw {
         results
     }
 
-    fn search2(&mut self, address: &Address, count: usize, start: usize) -> BestResults {
+    fn search2(
+        &mut self,
+        address: &Embedding<f32>,
+        count: usize,
+        start: usize,
+    ) -> BestResults<f32> {
         if self.nodes.len() == 0 {
             return BestResults::new(0);
         }
         let mut node_id = start;
-        let mut node_score = distance(&self.nodes[node_id].address, &address);
+        let mut node_score = address.distance(&self.nodes[node_id].address);
 
         let mut results = BestResults::new(count);
         results.insert(NodeReference {
@@ -144,9 +149,9 @@ impl Nsw {
             }
             let mut best_next_peer_id = None;
             let mut best_next_peer_score = node_score;
-            for (peer_index, peer_ref) in self.nodes[node_id].peers.iter().enumerate() {
+            for (_peer_index, peer_ref) in self.nodes[node_id].peers.iter().enumerate() {
                 let peer = &self.nodes[peer_ref.id];
-                let score = distance(&peer.address, &address);
+                let score = address.distance(&peer.address);
 
                 results.insert(NodeReference {
                     id: peer_ref.id,

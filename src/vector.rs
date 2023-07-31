@@ -1,61 +1,59 @@
-use std::collections::HashMap;
 use std::iter::zip;
 
+use num::Num;
 use rand::Rng;
 
 pub const EM_LEN: usize = 384; // 300 for fasttext
 
-pub fn find_embedding(
-    embeddings: &HashMap<&str, &[f32; EM_LEN]>,
-    s: &str,
-    embedding: &mut [f32; 300],
-) -> f32 {
-    let mut embedding_scratch: [f32; EM_LEN] = [0.0; EM_LEN];
-    let mut total = 0;
-    let mut found = 0;
-    for word in s.split(|c: char| !c.is_alphanumeric()) {
-        if word.len() == 0 {
-            continue;
-        }
-        total += 1;
-        match embeddings.get(word) {
-            Some(e) => {
-                found += 1;
-                for (i, v) in e.iter().enumerate() {
-                    embedding_scratch[i] += *v;
-                }
-            }
-            None => {}
-        }
-    }
-    if found == 0 {
-        embedding.fill(0.0); // Average
-        return 0.0;
-    }
-    for (i, v) in embedding_scratch.iter().enumerate() {
-        embedding[i] = v / found as f32;
-    }
-    found as f32 / total as f32
+pub type Embedding<T> = [T; EM_LEN];
+
+fn f32_to_i16(x: f32) -> i16 {
+    (x * i16::MAX as f32) as i16
 }
 
-/**
- * The range of i8 is -128 to 127.
- */
-fn reduce_bits(x: f32) -> i16 {
-    let mult = 16.0 * 16.0 / 2.0;
-    let mut bits = (x * mult) as i32;
-    if bits == 128 {
-        bits = 127;
-    }
-    bits as i16
+pub trait ToI16 {
+    fn to_i16(&self) -> Embedding<i16>;
 }
+
+impl ToI16 for Embedding<f32> {
+    fn to_i16(&self) -> Embedding<i16> {
+        let mut result: [i16; EM_LEN] = [0; EM_LEN];
+        for i in 0..EM_LEN {
+            result[i] = f32_to_i16(self[i]);
+        }
+        result
+    }
+}
+
+pub trait Distance<T: SupportedNum, Y> {
+    fn distance(&self, other: &Embedding<T>) -> Y;
+}
+
+impl Distance<f32, f32> for Embedding<f32> {
+    fn distance(&self, b: &Embedding<f32>) -> f32 {
+        zip(self, b).map(|(a, b)| (a - b).powf(2.0)).sum()
+    }
+}
+
+impl Distance<i16, u32> for Embedding<i16> {
+    fn distance(&self, b: &Embedding<i16>) -> u32 {
+        zip(self, b)
+            .map(|(a, b)| (*a as i32 - *b as i32).pow(2))
+            .sum::<i32>() as u32
+    }
+}
+
+pub trait SupportedNum: Num + PartialOrd + Copy {}
+
+impl SupportedNum for i16 {}
+impl SupportedNum for f32 {}
 
 /**
  * Cosine distance.
  *
  * Note: much slower, and doesn't seem to have quality benefits.
  */
-pub fn distance_cosine(a: &[f32; EM_LEN], b: &[f32; EM_LEN]) -> f32 {
+pub fn distance_cosine(a: &Embedding<f32>, b: &Embedding<f32>) -> f32 {
     let mut result: f32 = 0.0;
     for i in 0..EM_LEN {
         result += a[i] * b[i]
@@ -63,15 +61,7 @@ pub fn distance_cosine(a: &[f32; EM_LEN], b: &[f32; EM_LEN]) -> f32 {
     1.0 - result
 }
 
-pub fn distance_l2(a: &[f32; EM_LEN], b: &[f32; EM_LEN]) -> f32 {
-    zip(a, b).map(|(a, b)| (a - b).powf(2.0)).sum()
-}
-
-pub fn distance(a: &[f32; EM_LEN], b: &[f32; EM_LEN]) -> f32 {
-    distance_l2(a, b)
-}
-
-pub fn distance_upper_bound(a: &[f32; EM_LEN], b: &[f32; EM_LEN], _limit: f32) -> f32 {
+pub fn distance_upper_bound(a: &Embedding<f32>, b: &Embedding<f32>, _limit: f32) -> f32 {
     let mut result: f32 = 0.0;
     for i in 0..EM_LEN {
         result += (a[i] - b[i]).powf(2.0);
@@ -84,10 +74,10 @@ pub fn distance_upper_bound(a: &[f32; EM_LEN], b: &[f32; EM_LEN], _limit: f32) -
     result as f32
 }
 
-pub fn distance_reduced(a: &[f32; EM_LEN], b: &[f32; EM_LEN]) -> f32 {
+pub fn distance_reduced(a: &Embedding<f32>, b: &Embedding<f32>) -> f32 {
     let mut result: u32 = 0;
     for i in 0..EM_LEN {
-        result += (reduce_bits(a[i]) as i32 - reduce_bits(b[i]) as i32).pow(2) as u32;
+        result += (f32_to_i16(a[i]) as i32 - f32_to_i16(b[i]) as i32).pow(2) as u32;
     }
     result as f32
 }
@@ -103,9 +93,9 @@ pub fn distance_i8(a: &[i8; EM_LEN], b: &[i8; EM_LEN]) -> u32 {
 /**
  * Random unit length vector.
  */
-pub fn random_address() -> [f32; EM_LEN] {
+pub fn random_address() -> Embedding<f32> {
     let mut rng = rand::thread_rng();
-    let mut address: [f32; EM_LEN] = [0.0; EM_LEN];
+    let mut address: Embedding<f32> = [0.0; EM_LEN];
     for x in 0..EM_LEN {
         address[x] = rng.gen();
     }
@@ -116,6 +106,6 @@ pub fn random_address() -> [f32; EM_LEN] {
     address
 }
 
-pub fn vector_length(v: &[f32; EM_LEN]) -> f32 {
-    distance(v, &[0.0; EM_LEN]).sqrt()
+pub fn vector_length(v: &Embedding<f32>) -> f32 {
+    v.distance(&[0.0; EM_LEN]).sqrt()
 }

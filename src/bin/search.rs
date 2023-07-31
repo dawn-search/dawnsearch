@@ -9,7 +9,7 @@ use rust_bert::pipelines::sentence_embeddings::{
 use std::env;
 
 use arecibo::document_embeddings::DocumentEmbeddings;
-use arecibo::vector::{distance, EM_LEN};
+use arecibo::vector::{Distance, EM_LEN};
 
 fn main() -> anyhow::Result<()> {
     let args: Vec<String> = env::args().collect();
@@ -45,7 +45,7 @@ fn main() -> anyhow::Result<()> {
             for entry in 0..document_embeddings.entries(page) {
                 searched_pages_count += 1;
                 let p = document_embeddings.entry(page, entry);
-                let score = distance(&p.vector, &query_embedding);
+                let score = p.vector.distance(query_embedding);
 
                 if results.len() < 10 {
                     results.push(ScoredBook {
