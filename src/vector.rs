@@ -8,7 +8,7 @@ pub const EM_LEN: usize = 384; // 300 for fasttext
 pub type Embedding<T> = [T; EM_LEN];
 
 fn f32_to_i16(x: f32) -> i16 {
-    (x * i16::MAX as f32) as i16
+    (x * i16::MAX as f32).round() as i16
 }
 
 pub trait ToI16 {
@@ -35,11 +35,11 @@ impl Distance<f32, f32> for Embedding<f32> {
     }
 }
 
-impl Distance<i16, u32> for Embedding<i16> {
-    fn distance(&self, b: &Embedding<i16>) -> u32 {
+impl Distance<i16, u64> for Embedding<i16> {
+    fn distance(&self, b: &Embedding<i16>) -> u64 {
         zip(self, b)
-            .map(|(a, b)| (*a as i32 - *b as i32).pow(2))
-            .sum::<i32>() as u32
+            .map(|(a, b)| (*a as i64 - *b as i64).pow(2))
+            .sum::<i64>() as u64
     }
 }
 

@@ -28,10 +28,15 @@ fn main() -> anyhow::Result<()> {
     }
 
     let stdin = io::stdin();
-    eprint!("> ");
+    let mut previous_query = String::new();
     for q in stdin.lock().lines() {
         println!("");
-        let query = q.unwrap();
+        let mut query = q.unwrap();
+        if query.is_empty() {
+            query = previous_query.clone();
+        } else {
+            previous_query = query.clone();
+        }
 
         let q = &model.encode(&[query]).unwrap()[0];
         let query_embedding: &[f32; EM_LEN] = q.as_slice().try_into().unwrap();

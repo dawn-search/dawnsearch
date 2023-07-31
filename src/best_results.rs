@@ -1,19 +1,19 @@
-use crate::vector::SupportedNum;
+use num::Num;
 
 #[derive(Clone)]
-pub struct NodeReference<T: SupportedNum> {
+pub struct NodeReference<T: Num + PartialOrd + Copy> {
     pub id: usize,
     pub distance: T,
 }
 
-pub struct BestResults<T: SupportedNum> {
+pub struct BestResults<T: Num + PartialOrd + Copy> {
     results: Vec<NodeReference<T>>,
     worst_result_index: usize,
     worst_distance: T,
     size: usize,
 }
 
-impl<T: SupportedNum> BestResults<T> {
+impl<T: Num + PartialOrd + Copy> BestResults<T> {
     pub fn new(size: usize) -> BestResults<T> {
         BestResults {
             results: Vec::with_capacity(size),
