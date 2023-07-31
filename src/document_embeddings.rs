@@ -70,6 +70,14 @@ impl DocumentEmbeddings {
         };
     }
 
+    pub fn len(&self) -> usize {
+        let mut result = 0;
+        for file in &self.emb_files {
+            result += file.len() / std::mem::size_of::<PageEntry>();
+        }
+        result
+    }
+
     pub fn linear_to_segmented(&self, mut index: usize) -> (usize, usize) {
         let mut file = 0;
         loop {
