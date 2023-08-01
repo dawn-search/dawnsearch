@@ -21,7 +21,7 @@ fn search_page(results: &str) -> String {
     format!(
         r###"
 <html>
-<body>
+<body style="margin: 2em">
 <form method="get">
 <input name="q" id="searchbox">
 <input type="submit" value="Search">
@@ -64,6 +64,7 @@ async fn main() -> Result<(), anyhow::Error> {
         let search_provider = SearchProvider::load(&warc_dir).unwrap();
         println!("SearchProvider ready");
         while let Ok(x) = rx.recv() {
+            println!("Searching for {}", x.query);
             let results = search_provider.search(&x.query).unwrap();
             x.otx
                 .send(SearchRequestResponse { results })
@@ -142,7 +143,10 @@ async fn main() -> Result<(), anyhow::Error> {
                     let (otx, orx) = oneshot::channel();
                     tx.send(SearchRequestMessage {
                         otx,
-                        query: query.to_string(),
+                        query: urlencoding::decode(query)
+                            .expect("Url decode")
+                            .to_string()
+                            .replace("+", " "),
                     })
                     .unwrap();
                     let r = orx.await.expect("Receiving results");
@@ -165,7 +169,7 @@ fn format_results(results: &[SearchResult]) -> String {
         let url_encoded = html_escape::encode_text(&result.url);
         let title_encoded = html_escape::encode_text(&result.title);
         r += &format!(
-            r#"<p><a href="{}">{}</a><br>{:.2} {}</p>"#,
+            r#"<p><a href="{}">{}</a><br>{:.2} <i>{}</i></p>"#,
             url_encoded_u, title_encoded, result.distance, url_encoded
         );
     }
