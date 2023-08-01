@@ -17,3 +17,11 @@ Now we can start profiling:
 # Godbolt Compiler Explorer
 
 Make sure to specify the processor so you can see the vectorization: -O -C target-cpu=x86-64-v3
+
+# Executable size
+
+    cargo install cargo-bloat
+
+Find biggest crates:
+
+    cargo bloat --release --crates
