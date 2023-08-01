@@ -85,7 +85,7 @@ impl<T: Read> PageSource<T> {
 
             // 25 seconds (with 10kb payload)
 
-            if clean.len() < 500 {
+            if clean.len() < 400 {
                 continue;
             }
 

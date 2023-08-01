@@ -2,6 +2,10 @@ use std::env;
 use std::str;
 use std::{self};
 
+use arecibo::indexer::start_index_loop;
+use arecibo::messages::SearchProviderMessage;
+use arecibo::messages::SearchProviderMessage::*;
+use arecibo::messages::SearchRequestResponse;
 use arecibo::search_provider::SearchProvider;
 use arecibo::search_provider::SearchResult;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -27,32 +31,33 @@ document.getElementById("searchbox").focus();
     )
 }
 
-struct SearchRequestMessage {
-    otx: tokio::sync::oneshot::Sender<SearchRequestResponse>,
-    query: String,
-}
-
-#[derive(Debug)]
-struct SearchRequestResponse {
-    results: Vec<SearchResult>,
-}
-
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     let args: Vec<String> = env::args().collect();
     let warc_dir = args[1].clone();
 
-    let (tx, rx) = std::sync::mpsc::channel::<SearchRequestMessage>();
+    let (tx, rx) = std::sync::mpsc::sync_channel::<SearchProviderMessage>(2);
     tokio::task::spawn_blocking(move || {
-        let search_provider = SearchProvider::load(&warc_dir).unwrap();
+        // let mut search_provider = SearchProvider::load(&warc_dir).unwrap();
+        let mut search_provider = SearchProvider::new().unwrap();
         println!("SearchProvider ready");
         while let Ok(x) = rx.recv() {
-            // println!("Searching for {}", x.query);
-            let results = search_provider.search(&x.query).unwrap();
-            x.otx
-                .send(SearchRequestResponse { results })
-                .expect("Send response");
+            match x {
+                SearchRequestMessage { otx, query } => {
+                    let results = search_provider.search(&query).unwrap();
+                    otx.send(SearchRequestResponse { results })
+                        .expect("Send response");
+                }
+                ExtractedPageMessage { page } => {
+                    search_provider.insert(page).unwrap();
+                }
+            }
         }
+    });
+
+    let tx2 = tx.clone();
+    tokio::spawn(async move {
+        start_index_loop(tx2).await.unwrap();
     });
 
     let addr = "127.0.0.1:8080";
