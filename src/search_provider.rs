@@ -16,6 +16,12 @@ use crate::vector::{Embedding, EM_LEN};
 
 #[derive(Debug)]
 pub struct SearchResult {
+    pub pages: Vec<FoundPage>,
+    pub pages_searched: usize,
+}
+
+#[derive(Debug)]
+pub struct FoundPage {
     pub distance: f32,
     pub url: String,
     pub title: String,
@@ -125,8 +131,8 @@ impl SearchProvider {
         })
     }
 
-    pub fn search(&self, query: &str) -> Result<Vec<SearchResult>, anyhow::Error> {
-        let mut result = Vec::new();
+    pub fn search(&self, query: &str) -> Result<SearchResult, anyhow::Error> {
+        let mut pages = Vec::new();
 
         let q = &self.model.encode(&[query]).unwrap()[0];
         let query_embedding: &Embedding<f32> = q.as_slice().try_into().unwrap();
@@ -139,7 +145,7 @@ impl SearchProvider {
         let duration = start.elapsed();
 
         for (distance, id) in zip(results.distances, results.labels) {
-            result.push(SearchResult {
+            pages.push(FoundPage {
                 distance,
                 url: self.data[id as usize].url.clone(),
                 title: self.data[id as usize].title.clone(),
@@ -147,7 +153,10 @@ impl SearchProvider {
         }
         println!("Search completed in {} us", duration.as_micros(),);
 
-        Ok(result)
+        Ok(SearchResult {
+            pages,
+            pages_searched: self.index.size(),
+        })
     }
 
     pub fn insert(&mut self, page: ExtractedPage) -> Result<(), anyhow::Error> {

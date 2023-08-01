@@ -5,7 +5,6 @@ use std::{self};
 use arecibo::indexer::start_index_loop;
 use arecibo::messages::SearchProviderMessage;
 use arecibo::messages::SearchProviderMessage::*;
-use arecibo::messages::SearchRequestResponse;
 use arecibo::search_provider::SearchProvider;
 use arecibo::search_provider::SearchResult;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -44,9 +43,8 @@ async fn main() -> Result<(), anyhow::Error> {
         while let Ok(x) = rx.recv() {
             match x {
                 SearchRequestMessage { otx, query } => {
-                    let results = search_provider.search(&query).unwrap();
-                    otx.send(SearchRequestResponse { results })
-                        .expect("Send response");
+                    let result = search_provider.search(&query).unwrap();
+                    otx.send(result).expect("Send response");
                 }
                 ExtractedPageMessage { page } => {
                     search_provider.insert(page).unwrap();
@@ -141,8 +139,8 @@ async fn main() -> Result<(), anyhow::Error> {
                             .replace("+", " "),
                     })
                     .unwrap();
-                    let r = orx.await.expect("Receiving results");
-                    format_results(&r.results)
+                    let result = orx.await.expect("Receiving results");
+                    format_results(&result)
                 }
                 None => String::new(),
             };
@@ -154,9 +152,10 @@ async fn main() -> Result<(), anyhow::Error> {
     }
 }
 
-fn format_results(results: &[SearchResult]) -> String {
+fn format_results(result: &SearchResult) -> String {
     let mut r = String::new();
-    for result in results {
+    r += &format!("<p>Searched {} pages</p>", result.pages_searched);
+    for result in &result.pages {
         let url_encoded_u = html_escape::encode_double_quoted_attribute(&result.url);
         let url_encoded = html_escape::encode_text(&result.url);
         let title_encoded = html_escape::encode_text(&result.title);
