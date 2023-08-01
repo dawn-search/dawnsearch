@@ -110,13 +110,12 @@ unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
 }
 
 pub fn extract_records_and_add_to_index(
+    input: &mut dyn Read,
     filename: &PathBuf,
     model: &SentenceEmbeddingsModel,
 ) -> io::Result<()> {
-    let file = File::open(&filename).unwrap();
-
     const PER_THREAD_BUF_SIZE: usize = 16 * 1024 * 1024;
-    let mut reader = io::BufReader::with_capacity(PER_THREAD_BUF_SIZE, MultiGzDecoder::new(file));
+    let mut reader = io::BufReader::with_capacity(PER_THREAD_BUF_SIZE, MultiGzDecoder::new(input));
 
     let mut output_file_name = filename.clone();
     output_file_name.set_extension("emb");
@@ -141,6 +140,9 @@ pub fn extract_records_and_add_to_index(
         ProgressStyle::with_template("[{elapsed_precise}] {bar}{pos:>7}/{len:7} {msg}").unwrap(),
     );
     let mut start = Instant::now();
+    let mut speed = 0.0f32;
+    let mut per_embedding = 0.0f32;
+
     while let Some(record) = read_record(&mut reader)? {
         progress.set_position(count);
         if record.warc_type != "conversion" && record.warc_type != "response" {
@@ -225,11 +227,11 @@ pub fn extract_records_and_add_to_index(
         let interval = 50;
         if added % interval == 0 {
             let duration = start.elapsed();
-            let speed = interval as f32 / duration.as_millis() as f32 * 1000.0;
-            let per_embedding = duration.as_millis() as f32 / interval as f32;
-            progress.set_message(format!("{:.0}/s {:.1} ms {}", speed, per_embedding, added));
+            speed = interval as f32 / duration.as_millis() as f32 * 1000.0;
+            per_embedding = duration.as_millis() as f32 / interval as f32;
             start = Instant::now();
         }
+        progress.set_message(format!("{} {:.0}/s {:.1} ms", added, speed, per_embedding));
 
         // 4 minutes
     }

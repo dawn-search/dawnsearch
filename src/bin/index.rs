@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, fs::File};
 
 use rust_bert::pipelines::sentence_embeddings::{
     SentenceEmbeddingsBuilder, SentenceEmbeddingsModelType,
@@ -27,7 +27,8 @@ fn main() -> anyhow::Result<()> {
             continue;
         }
         eprintln!("{}\t{}", numfiles, s);
-        extract_records_and_add_to_index(&filename, &model)?;
+        let mut file = File::open(&filename).unwrap();
+        extract_records_and_add_to_index(&mut file, &filename, &model)?;
     }
 
     Ok(())
