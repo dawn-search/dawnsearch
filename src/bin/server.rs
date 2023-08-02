@@ -1,7 +1,7 @@
 use std::str;
 use std::{self};
 
-use arecibo::indexer::start_index_loop;
+use arecibo::extraction_loop::start_extraction_loop;
 use arecibo::messages::SearchProviderMessage;
 use arecibo::messages::SearchProviderMessage::*;
 use arecibo::search_provider::SearchProvider;
@@ -51,7 +51,7 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let tx2 = tx.clone();
     tokio::spawn(async move {
-        start_index_loop(tx2).await.unwrap();
+        start_extraction_loop(tx2).await.unwrap();
     });
 
     let addr = "127.0.0.1:8080";
