@@ -2,3 +2,4 @@
 /store
 /perf.*
 /*.usearch
+/*.sqlite

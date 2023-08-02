@@ -1,4 +1,3 @@
-use std::env;
 use std::str;
 use std::{self};
 
@@ -32,9 +31,6 @@ document.getElementById("searchbox").focus();
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
-    let args: Vec<String> = env::args().collect();
-    let warc_dir = args[1].clone();
-
     let (tx, rx) = std::sync::mpsc::sync_channel::<SearchProviderMessage>(2);
     tokio::task::spawn_blocking(move || {
         // let mut search_provider = SearchProvider::load(&warc_dir).unwrap();

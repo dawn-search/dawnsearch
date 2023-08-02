@@ -11,6 +11,7 @@ use rust_bert::pipelines::sentence_embeddings::SentenceEmbeddingsModel;
 use std::io::Read;
 
 use crate::page_source::PageSource;
+use crate::util::any_as_u8_slice;
 use crate::vector::Embedding;
 
 #[derive(Debug)]
@@ -21,11 +22,6 @@ pub struct PageEntry {
     pub vector: Embedding<f32>,
     pub url_len: u64,
     pub title_len: u64,
-}
-
-// From https://stackoverflow.com/questions/28127165/how-to-convert-struct-to-u8
-unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
-    ::core::slice::from_raw_parts((p as *const T) as *const u8, ::core::mem::size_of::<T>())
 }
 
 pub fn extract_records_and_add_to_index<T: Read>(

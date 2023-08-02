@@ -39,11 +39,12 @@ pub async fn start_index_loop(sender: SyncSender<SearchProviderMessage>) -> anyh
 
         let sender = sender.clone();
 
+        let mut url_string = "https://data.commoncrawl.org/".to_string();
+        url_string.push_str(random_file);
+
         tokio::task::spawn_blocking(move || {
             let response = tokio_util::io::SyncIoBridge::new(response_async);
 
-            // let mut url_string = "https://data.commoncrawl.org/".to_string();
-            // url_string.push_str(random_file);
             // let response = reqwest::blocking::get(url_string).unwrap();
 
             let mut page_source = PageSource::read_warc_gz(response);
