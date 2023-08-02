@@ -35,6 +35,7 @@ pub struct SearchResult {
 
 #[derive(Debug)]
 pub struct FoundPage {
+    pub id: usize,
     pub distance: f32,
     pub url: String,
     pub title: String,
@@ -156,14 +157,34 @@ impl SearchProvider {
     }
 
     pub fn search(&self, query: &str) -> Result<SearchResult, anyhow::Error> {
-        let mut pages = Vec::new();
-
         let q = &self.model.encode(&[query])?[0];
         let query_embedding: &Embedding<f32> = q.as_slice().try_into()?;
 
+        self.search_embedding(query_embedding)
+    }
+
+    pub fn search_like(&self, id: usize) -> Result<SearchResult, anyhow::Error> {
+        let mut s = self
+            .sqlite
+            .prepare("SELECT embedding FROM page WHERE id  = ?1")?;
+        let mut qq = s.query(&[&id])?;
+        if let Some(r) = qq.next()? {
+            let embedding_bytes: Vec<u8> = r.get(0)?;
+            let embedding = unsafe { bytes_to_embedding(embedding_bytes.as_slice().try_into()?)? };
+
+            return self.search_embedding(embedding);
+        }
+        bail!("Page not found in DB: {}", id);
+    }
+
+    fn search_embedding(
+        &self,
+        query_embedding: &Embedding<f32>,
+    ) -> Result<SearchResult, anyhow::Error> {
         if !is_normalized(query_embedding) {
             bail!("Search vector is not normalized");
         }
+        let mut pages = Vec::new();
 
         let start = Instant::now();
 
@@ -178,13 +199,14 @@ impl SearchProvider {
         for (distance, id) in zip(results.distances, results.labels) {
             let mut qq = s.query(&[&id])?;
             if let Some(r) = qq.next()? {
-                let _id: u64 = r.get(0)?;
+                let id: u64 = r.get(0)?;
                 let url = r.get(1)?;
                 let title = r.get(2)?;
                 let text: String = r.get(3)?;
                 let embedding_bytes: Vec<u8> = r.get(4)?;
 
                 pages.push(FoundPage {
+                    id: id as usize,
                     distance,
                     url,
                     title,

@@ -261,7 +261,7 @@ fn main() -> anyhow::Result<()> {
             }
             let (file, entry) =
                 document_embeddings.linear_to_segmented(result.id - STRUCTURE_NODES);
-            let e = document_embeddings.entry(file, entry);
+            let _e = document_embeddings.entry(file, entry);
             let url: &[u8] = document_embeddings.url(file, entry);
             let title: &[u8] = document_embeddings.title(file, entry);
             println!(

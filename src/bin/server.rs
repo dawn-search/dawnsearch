@@ -53,8 +53,30 @@ async fn main() -> Result<(), anyhow::Error> {
         println!("SearchProvider ready");
         while let Ok(message) = rx.recv() {
             match message {
-                SearchRequestMessage { otx, query } => {
-                    let result = search_provider.search(&query).unwrap();
+                TextSearch { otx, query } => {
+                    let result = match search_provider.search(&query) {
+                        Ok(r) => r,
+                        Err(e) => {
+                            println!("Failed to perform query: {}", e);
+                            SearchResult {
+                                pages: Vec::new(),
+                                pages_searched: 0,
+                            }
+                        }
+                    };
+                    otx.send(result).expect("Send response");
+                }
+                MoreLikeSearch { otx, id } => {
+                    let result = match search_provider.search_like(id) {
+                        Ok(r) => r,
+                        Err(e) => {
+                            println!("Failed to perform query: {}", e);
+                            SearchResult {
+                                pages: Vec::new(),
+                                pages_searched: 0,
+                            }
+                        }
+                    };
                     otx.send(result).expect("Send response");
                 }
                 ExtractedPageMessage { page } => match search_provider.insert(page) {
@@ -133,10 +155,27 @@ async fn main() -> Result<(), anyhow::Error> {
                     Some(s) => s,
                     None => return,
                 };
-                let mut url_parts = url.split("?q=");
-                let path = match url_parts.next() {
+                let mut path_query = url.split("?");
+                let path = match path_query.next() {
+                    // ../
                     Some(s) => s,
                     None => return,
+                };
+                let kv = if let Some(query) = path_query.next() {
+                    let mut key_value = query.split("=");
+                    let key = match key_value.next() {
+                        // q
+                        Some(s) => s,
+                        None => return,
+                    };
+                    let value = match key_value.next() {
+                        // ...
+                        Some(s) => s,
+                        None => return,
+                    };
+                    Some((key, value))
+                } else {
+                    None
                 };
 
                 if path != "/" {
@@ -146,8 +185,6 @@ async fn main() -> Result<(), anyhow::Error> {
                         .unwrap();
                     return;
                 }
-
-                let q = url_parts.next();
 
                 let mut line = String::new();
                 while socket.read_line(&mut line).await.is_ok() {
@@ -165,17 +202,25 @@ async fn main() -> Result<(), anyhow::Error> {
                     .await
                     .unwrap();
 
-                let results = match q {
-                    Some(query) => {
+                let results = match kv {
+                    Some((key, value)) => {
                         let (otx, orx) = oneshot::channel();
-                        tx.send(SearchRequestMessage {
-                            otx,
-                            query: urlencoding::decode(query)
-                                .expect("Url decode")
-                                .to_string()
-                                .replace("+", " "),
-                        })
-                        .unwrap();
+                        if key == "q" {
+                            tx.send(TextSearch {
+                                otx,
+                                query: urlencoding::decode(value)
+                                    .expect("Url decode")
+                                    .to_string()
+                                    .replace("+", " "),
+                            })
+                            .unwrap();
+                        } else if key == "s" {
+                            tx.send(MoreLikeSearch {
+                                otx,
+                                id: str::parse(value).unwrap(),
+                            })
+                            .unwrap();
+                        }
                         let result = orx.await.expect("Receiving results");
                         format_results(&result)
                     }
@@ -216,8 +261,8 @@ fn format_results(result: &SearchResult) -> String {
         let s = slice_up_to(&result.text, 400);
         let text_encoded = html_escape::encode_text(s);
         r += &format!(
-            r#"<p><a href="{}">{}</a><br>{:.2} <i>{}</i></p><p>{}...</p>"#,
-            url_encoded_u, title_encoded, result.distance, url_encoded, text_encoded,
+            r#"<p><a href="{}">{}</a><br>{:.2} <a href="?s={}">more like this</a> <i>{}</i></p><p>{}...</p>"#,
+            url_encoded_u, title_encoded, result.distance, result.id, url_encoded, text_encoded,
         );
     }
     r
