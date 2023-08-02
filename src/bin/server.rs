@@ -1,4 +1,5 @@
 use std::str;
+use std::time::Duration;
 use std::{self};
 
 use arecibo::extraction_loop::start_extraction_loop;
@@ -7,7 +8,6 @@ use arecibo::messages::SearchProviderMessage::*;
 use arecibo::search_provider::SearchProvider;
 use arecibo::search_provider::SearchResult;
 use arecibo::util::slice_up_to;
-use arecibo::vector::vector_length;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
 use tokio::signal;
@@ -61,10 +61,23 @@ async fn main() -> Result<(), anyhow::Error> {
                     Err(e) => println!("Failed to insert {}", e),
                     _ => {}
                 },
-                Shutdown {} => {
-                    search_provider.shutdown();
+                Save => {
+                    search_provider.save().unwrap();
+                }
+                Shutdown => {
+                    search_provider.shutdown().unwrap();
                     break;
                 }
+            }
+        }
+    });
+
+    let tx2 = tx.clone();
+    tokio::spawn(async move {
+        loop {
+            tokio::time::sleep(Duration::from_secs(10 * 60)).await;
+            if let Err(e) = tx2.send(Save) {
+                println!("Saving the index failed: {}", e);
             }
         }
     });

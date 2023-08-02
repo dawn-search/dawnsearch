@@ -5,8 +5,6 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use indicatif::ProgressBar;
-use indicatif::ProgressStyle;
 use rust_bert::pipelines::sentence_embeddings::SentenceEmbeddingsModel;
 use std::io::Read;
 

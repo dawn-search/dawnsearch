@@ -8,5 +8,6 @@ pub enum SearchProviderMessage {
     ExtractedPageMessage {
         page: ExtractedPage,
     },
+    Save,
     Shutdown,
 }

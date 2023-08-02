@@ -144,9 +144,14 @@ impl SearchProvider {
     }
 
     pub fn shutdown(&mut self) -> anyhow::Result<()> {
-        println!("[Search Provider] Shutting down...");
-        self.index.save("index.usearch")?;
-        println!("[Search Provider] Shutdown completed");
+        self.save()?;
+        Ok(())
+    }
+
+    pub fn save(&mut self) -> anyhow::Result<()> {
+        let path = "index.usearch";
+        self.index.save(path)?;
+        println!("[Search Provider] Saved index to {}", path);
         Ok(())
     }
 
@@ -254,7 +259,7 @@ impl SearchProvider {
                 break;
             }
             progress.inc(1);
-            let id: u64 = r.get(0)?;
+            let _id: u64 = r.get(0)?;
             let embedding: Vec<u8> = r.get(1)?;
             if embedding.len() != EM_LEN * 4 {
                 wrong_length += 1;
