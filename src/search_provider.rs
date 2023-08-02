@@ -1,13 +1,14 @@
 use std::iter::zip;
 use std::mem::transmute;
 use std::time::Instant;
-use std::{self};
+use std::{self, fs};
 use std::{str, usize};
 
 use cxx::UniquePtr;
 use rust_bert::pipelines::sentence_embeddings::{
     SentenceEmbeddingsBuilder, SentenceEmbeddingsModel, SentenceEmbeddingsModelType,
 };
+use tokio_util::sync::CancellationToken;
 use usearch::ffi::{new_index, Index, IndexOptions, MetricKind, ScalarKind};
 
 use crate::page_source::ExtractedPage;
@@ -41,12 +42,14 @@ pub struct SearchProvider {
     index: UniquePtr<Index>,
 
     sqlite: rusqlite::Connection,
+
+    shutdown_token: CancellationToken,
 }
 
 impl SearchProvider {
-    pub fn new() -> Result<SearchProvider, anyhow::Error> {
+    pub fn new(shutdown_token: CancellationToken) -> Result<SearchProvider, anyhow::Error> {
         let start = Instant::now();
-        print!("Loading model...");
+        print!("[Search Provider] Loading model...");
         let model = SentenceEmbeddingsBuilder::remote(SentenceEmbeddingsModelType::AllMiniLmL6V2)
             .with_device(tch::Device::Cpu)
             .create_model()?;
@@ -82,9 +85,16 @@ impl SearchProvider {
             model,
             index,
             sqlite,
+            shutdown_token: shutdown_token.clone(),
         };
 
-        search_provider.fill_index_from_db()?;
+        let index_path = "index.usearch";
+        if !fs::metadata(index_path).is_ok() || !search_provider.index.load(index_path).is_ok() {
+            search_provider.fill_index_from_db()?;
+            search_provider.index.save(index_path)?;
+        } else {
+            println!("[Search Provider] Loaded {}", index_path);
+        }
 
         Ok(search_provider)
     }
@@ -107,6 +117,9 @@ impl SearchProvider {
             .unwrap();
         let mut qq = s.query(()).unwrap();
         while let Some(r) = qq.next().unwrap() {
+            if self.shutdown_token.is_cancelled() {
+                break;
+            }
             progress.inc(1);
             let id: u64 = r.get(0).unwrap();
             let embedding: Vec<u8> = r.get(1).unwrap();
@@ -115,6 +128,13 @@ impl SearchProvider {
             self.index.add(id, q).unwrap();
         }
         progress.finish_and_clear();
+        Ok(())
+    }
+
+    pub fn shutdown(&mut self) -> anyhow::Result<()> {
+        println!("[Search Provider] Shutting down...");
+        self.index.save("index.usearch")?;
+        println!("[Search Provider] Shutdown completed");
         Ok(())
     }
     // pub fn load(warc_dir: &str) -> Result<SearchProvider, anyhow::Error> {
