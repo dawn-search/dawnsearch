@@ -1,9 +1,9 @@
 use std::iter::zip;
-use std::mem::transmute;
 use std::time::Instant;
 use std::{self, fs};
 use std::{str, usize};
 
+use anyhow::bail;
 use cxx::UniquePtr;
 use rust_bert::pipelines::sentence_embeddings::{
     SentenceEmbeddingsBuilder, SentenceEmbeddingsModel, SentenceEmbeddingsModelType,
@@ -13,12 +13,15 @@ use usearch::ffi::{new_index, Index, IndexOptions, MetricKind, ScalarKind};
 
 use crate::page_source::ExtractedPage;
 use crate::util::default_progress_bar;
-use crate::vector::{Embedding, EM_LEN};
+use crate::vector::{
+    bytes_to_embedding, is_normalized, vector_embedding_to_bytes, Embedding, EM_LEN,
+};
 
+// Remove the index when you change any of these values!
 const INDEX_OPTIONS: IndexOptions = IndexOptions {
     dimensions: EM_LEN,
     metric: MetricKind::IP,
-    quantization: ScalarKind::F8,
+    quantization: ScalarKind::F32,
     connectivity: 0,
     expansion_add: 0,
     expansion_search: 0,
@@ -35,6 +38,8 @@ pub struct FoundPage {
     pub distance: f32,
     pub url: String,
     pub title: String,
+    pub text: String,
+    pub embedding: Vec<f32>,
 }
 
 pub struct SearchProvider {
@@ -96,16 +101,14 @@ impl SearchProvider {
             println!("[Search Provider] Loaded {}", index_path);
         }
 
+        search_provider.verify()?;
+
         Ok(search_provider)
     }
 
     fn fill_index_from_db(&mut self) -> Result<(), anyhow::Error> {
         // Fill from DB
-        let count = self
-            .sqlite
-            .query_row("SELECT count(*) FROM page", (), |row| {
-                row.get::<_, usize>(0)
-            })?;
+        let count = self.page_count()?;
         let progress = default_progress_bar(count);
         progress.set_prefix("Rebuilding index");
 
@@ -123,12 +126,21 @@ impl SearchProvider {
             progress.inc(1);
             let id: u64 = r.get(0).unwrap();
             let embedding: Vec<u8> = r.get(1).unwrap();
-            let q: &[f32] = unsafe { transmute(embedding.as_slice()) };
+            let q: &[f32] = unsafe { bytes_to_embedding(embedding.as_slice().try_into()?)? };
 
             self.index.add(id, q).unwrap();
         }
         progress.finish_and_clear();
         Ok(())
+    }
+
+    fn page_count(&mut self) -> Result<usize, anyhow::Error> {
+        let count = self
+            .sqlite
+            .query_row("SELECT count(*) FROM page", (), |row| {
+                row.get::<_, usize>(0)
+            })?;
+        Ok(count)
     }
 
     pub fn shutdown(&mut self) -> anyhow::Result<()> {
@@ -137,93 +149,47 @@ impl SearchProvider {
         println!("[Search Provider] Shutdown completed");
         Ok(())
     }
-    // pub fn load(warc_dir: &str) -> Result<SearchProvider, anyhow::Error> {
-    //     let start = Instant::now();
-
-    //     print!("Loading model...");
-
-    //     let model = SentenceEmbeddingsBuilder::remote(SentenceEmbeddingsModelType::AllMiniLmL6V2)
-    //         .with_device(tch::Device::Cpu)
-    //         .create_model()?;
-
-    //     let duration = start.elapsed();
-    //     println!(" {} ms", duration.as_millis());
-
-    //     let mut data = Vec::new();
-    //     let document_embeddings = DocumentEmbeddings::load(&warc_dir)?;
-    //     for page in 0..document_embeddings.files() {
-    //         for entry in 0..document_embeddings.entries(page) {
-    //             let url = str::from_utf8(document_embeddings.url(page, entry))?.to_string();
-    //             let title = str::from_utf8(document_embeddings.title(page, entry))?.to_string();
-    //             let text = String::new();
-
-    //             data.push(PageData { url, title, text })
-    //         }
-    //     }
-
-    //     let total_documents = document_embeddings.len();
-
-    //     let index = new_index(&INDEX_OPTIONS).unwrap();
-
-    //     let index_path = "index.usearch";
-    //     if !fs::metadata(index_path).is_ok() || !index.view(index_path).is_ok() {
-    //         println!("Recalculating index...");
-    //         index.reserve(document_embeddings.len())?;
-
-    //         let progress = default_progress_bar(36000);
-    //         );
-    //         let mut searched_pages_count = 0;
-    //         for page in 0..document_embeddings.files() {
-    //             for entry in 0..document_embeddings.entries(page) {
-    //                 progress.set_position(searched_pages_count);
-    //                 let p = document_embeddings.entry(page, entry);
-    //                 index.add(searched_pages_count, &p.vector)?;
-    //                 searched_pages_count += 1;
-    //             }
-    //         }
-    //         progress.finish();
-    //         index.save(index_path)?;
-    //     } else {
-    //         println!("Loaded index {}", index_path);
-    //     }
-    //     Ok(SearchProvider {
-    //         model,
-    //         // document_embeddings,
-    //         index,
-    //         data,
-    //     })
-    // }
 
     pub fn search(&self, query: &str) -> Result<SearchResult, anyhow::Error> {
         let mut pages = Vec::new();
 
-        let q = &self.model.encode(&[query]).unwrap()[0];
-        let query_embedding: &Embedding<f32> = q.as_slice().try_into().unwrap();
+        let q = &self.model.encode(&[query])?[0];
+        let query_embedding: &Embedding<f32> = q.as_slice().try_into()?;
+
+        if !is_normalized(query_embedding) {
+            bail!("Search vector is not normalized");
+        }
 
         let start = Instant::now();
 
         // Read back the tags
-        let results = self.index.search(query_embedding, 20).unwrap();
+        let results = self.index.search(query_embedding, 20)?;
 
         let duration = start.elapsed();
 
         let mut s = self
             .sqlite
-            .prepare("SELECT id, url, title, text FROM page WHERE id  = ?1")
-            .unwrap();
+            .prepare("SELECT id, url, title, text, embedding FROM page WHERE id  = ?1")?;
         for (distance, id) in zip(results.distances, results.labels) {
-            let mut qq = s.query(&[&id]).unwrap();
-            let r = qq.next().unwrap().unwrap();
-            let _id: u64 = r.get(0).unwrap();
-            let url = r.get(1).unwrap();
-            let title = r.get(2).unwrap();
-            let _text: String = r.get(3).unwrap();
+            let mut qq = s.query(&[&id])?;
+            if let Some(r) = qq.next()? {
+                let _id: u64 = r.get(0)?;
+                let url = r.get(1)?;
+                let title = r.get(2)?;
+                let text: String = r.get(3)?;
+                let embedding_bytes: Vec<u8> = r.get(4)?;
 
-            pages.push(FoundPage {
-                distance,
-                url,
-                title,
-            });
+                pages.push(FoundPage {
+                    distance,
+                    url,
+                    title,
+                    text,
+                    embedding: unsafe { bytes_to_embedding(&embedding_bytes.try_into().unwrap())? }
+                        .to_vec(),
+                });
+            } else {
+                println!("Page not found in DB: {}", id);
+            }
         }
         println!("Search completed in {} us", duration.as_micros(),);
 
@@ -245,22 +211,21 @@ impl SearchProvider {
             return Ok(());
         }
 
-        println!("Inserting {}", page.url);
+        let q = &self.model.encode(&[page.combined])?[0];
 
-        let q = &self.model.encode(&[page.combined]).unwrap()[0];
+        if !is_normalized(q.as_slice().try_into()?) {
+            bail!("Insert embedding is not normalized");
+        }
 
         // Insert into DB
-        let embedding: &[u8] = unsafe { transmute(q.as_slice()) };
-        self.sqlite
-            .execute(
-                "INSERT INTO page (url, title, text, embedding) VALUES (?1, ?2, ?3, ?4)",
-                (page.url, page.title, page.text, embedding),
-            )
-            .unwrap();
+        let embedding: &[u8; EM_LEN * 4] = unsafe { vector_embedding_to_bytes(q)? };
+        self.sqlite.execute(
+            "INSERT INTO page (url, title, text, embedding) VALUES (?1, ?2, ?3, ?4)",
+            (page.url, page.title, page.text, embedding),
+        )?;
         let id: u64 = self
             .sqlite
-            .query_row("SELECT last_insert_rowid()", (), |row| row.get(0))
-            .unwrap();
+            .query_row("SELECT last_insert_rowid()", (), |row| row.get(0))?;
 
         // Insert into index
         if self.index.size() == self.index.capacity() {
@@ -268,6 +233,47 @@ impl SearchProvider {
             self.index.reserve(self.index.size() + 1024)?;
         }
         self.index.add(id, q)?;
+        Ok(())
+    }
+
+    /** Check if all our data is OK */
+    pub fn verify(&mut self) -> anyhow::Result<()> {
+        println!(
+            "[Search Provider] Checking vector sizes... {}",
+            self.page_count()?
+        );
+
+        let progress = default_progress_bar(self.page_count()?);
+        let mut s = self.sqlite.prepare("SELECT id, embedding FROM page")?;
+        let mut qq = s.query(())?;
+
+        let mut wrong_length = 0;
+        let mut not_normalized = 0;
+        while let Some(r) = qq.next()? {
+            if self.shutdown_token.is_cancelled() {
+                break;
+            }
+            progress.inc(1);
+            let id: u64 = r.get(0)?;
+            let embedding: Vec<u8> = r.get(1)?;
+            if embedding.len() != EM_LEN * 4 {
+                wrong_length += 1;
+                continue;
+            }
+            let q: &[f32] = unsafe { bytes_to_embedding(embedding.as_slice().try_into()?)? };
+            let embedding = q.try_into()?;
+            if !is_normalized(embedding) {
+                not_normalized += 1;
+            }
+        }
+        progress.finish();
+        if wrong_length > 0 || not_normalized > 0 {
+            bail!(
+                "Wrong number of bytes: {} Not normalized: {}",
+                wrong_length,
+                not_normalized
+            );
+        }
         Ok(())
     }
 }

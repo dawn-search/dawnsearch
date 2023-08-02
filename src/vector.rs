@@ -1,5 +1,6 @@
 use std::iter::zip;
 
+use anyhow::bail;
 use num::Num;
 use rand::Rng;
 
@@ -119,4 +120,32 @@ pub fn random_address() -> Embedding<f32> {
 
 pub fn vector_length(v: &Embedding<f32>) -> f32 {
     v.distance(&[0.0; EM_LEN]).sqrt()
+}
+
+const MAX_VECTOR_DELTA: f32 = 0.01f32;
+pub fn is_normalized(v: &Embedding<f32>) -> bool {
+    let l = vector_length(v);
+    if !l.is_finite() {
+        return false;
+    }
+    l > 1.0 - MAX_VECTOR_DELTA || l < 1.0 + MAX_VECTOR_DELTA
+}
+
+pub unsafe fn bytes_to_embedding(p: &[u8; EM_LEN * 4]) -> anyhow::Result<&[f32; EM_LEN]> {
+    let emb = ::core::slice::from_raw_parts(p.as_ptr() as *const f32, EM_LEN).try_into()?;
+    if !is_normalized(emb) {
+        bail!("Vector is not normalized");
+    }
+    Ok(emb)
+}
+
+pub unsafe fn embedding_to_bytes(p: &[f32; EM_LEN]) -> anyhow::Result<&[u8; EM_LEN * 4]> {
+    if !is_normalized(p) {
+        bail!("Vector is not normalized");
+    }
+    Ok(::core::slice::from_raw_parts(p.as_ptr() as *const u8, EM_LEN * 4).try_into()?)
+}
+
+pub unsafe fn vector_embedding_to_bytes(p: &Vec<f32>) -> anyhow::Result<&[u8; EM_LEN * 4]> {
+    embedding_to_bytes(p.as_slice().try_into()?)
 }

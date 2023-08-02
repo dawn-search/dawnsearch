@@ -17,7 +17,7 @@ indicatif = "0.17.5"
 tch = "^0.13.0"
 torch-sys = "^0.13.0"
 readability = "0.2.0"
-anyhow = "1.0.72"
+anyhow = { version = "1.0.72", features = ["backtrace"] }
 ureq = "2.7.1"
 html5ever = "0.25"
 markup5ever_rcdom = "0.1"

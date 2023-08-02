@@ -6,6 +6,8 @@ use arecibo::messages::SearchProviderMessage;
 use arecibo::messages::SearchProviderMessage::*;
 use arecibo::search_provider::SearchProvider;
 use arecibo::search_provider::SearchResult;
+use arecibo::util::slice_up_to;
+use arecibo::vector::vector_length;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
 use tokio::signal;
@@ -40,7 +42,14 @@ async fn main() -> Result<(), anyhow::Error> {
     let (tx, rx) = std::sync::mpsc::sync_channel::<SearchProviderMessage>(2);
     let search_provider_tx = tx.clone();
     tokio::task::spawn_blocking(move || {
-        let mut search_provider = SearchProvider::new(shutdown_token).unwrap();
+        let mut search_provider = match SearchProvider::new(shutdown_token) {
+            Err(e) => {
+                println!("Failed to load search provider {}", e);
+                println!("{}", e.backtrace());
+                return;
+            }
+            Ok(s) => s,
+        };
         println!("SearchProvider ready");
         while let Ok(message) = rx.recv() {
             match message {
@@ -48,9 +57,10 @@ async fn main() -> Result<(), anyhow::Error> {
                     let result = search_provider.search(&query).unwrap();
                     otx.send(result).expect("Send response");
                 }
-                ExtractedPageMessage { page } => {
-                    search_provider.insert(page).unwrap();
-                }
+                ExtractedPageMessage { page } => match search_provider.insert(page) {
+                    Err(e) => println!("Failed to insert {}", e),
+                    _ => {}
+                },
                 Shutdown {} => {
                     search_provider.shutdown();
                     break;
@@ -190,9 +200,11 @@ fn format_results(result: &SearchResult) -> String {
         let url_encoded_u = html_escape::encode_double_quoted_attribute(&result.url);
         let url_encoded = html_escape::encode_text(&result.url);
         let title_encoded = html_escape::encode_text(&result.title);
+        let s = slice_up_to(&result.text, 400);
+        let text_encoded = html_escape::encode_text(s);
         r += &format!(
-            r#"<p><a href="{}">{}</a><br>{:.2} <i>{}</i></p>"#,
-            url_encoded_u, title_encoded, result.distance, url_encoded
+            r#"<p><a href="{}">{}</a><br>{:.2} <i>{}</i></p><p>{}...</p>"#,
+            url_encoded_u, title_encoded, result.distance, url_encoded, text_encoded,
         );
     }
     r
