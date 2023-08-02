@@ -11,6 +11,7 @@ use rust_bert::pipelines::sentence_embeddings::{
 use usearch::ffi::{new_index, Index, IndexOptions, MetricKind, ScalarKind};
 
 use crate::page_source::ExtractedPage;
+use crate::util::default_progress_bar;
 use crate::vector::{Embedding, EM_LEN};
 
 const INDEX_OPTIONS: IndexOptions = IndexOptions {
@@ -83,30 +84,38 @@ impl SearchProvider {
             sqlite,
         };
 
-        search_provider.fill_index_from_db();
+        search_provider.fill_index_from_db()?;
 
         Ok(search_provider)
     }
 
-    fn fill_index_from_db(&mut self) {
+    fn fill_index_from_db(&mut self) -> Result<(), anyhow::Error> {
         // Fill from DB
+        let count = self
+            .sqlite
+            .query_row("SELECT count(*) FROM page", (), |row| {
+                row.get::<_, usize>(0)
+            })?;
+        let progress = default_progress_bar(count);
+        progress.set_prefix("Rebuilding index");
+
+        self.index.reserve(count)?;
+
         let mut s = self
             .sqlite
             .prepare("SELECT id, embedding FROM page")
             .unwrap();
         let mut qq = s.query(()).unwrap();
         while let Some(r) = qq.next().unwrap() {
+            progress.inc(1);
             let id: u64 = r.get(0).unwrap();
             let embedding: Vec<u8> = r.get(1).unwrap();
             let q: &[f32] = unsafe { transmute(embedding.as_slice()) };
 
-            // Insert into index
-            if self.index.size() == self.index.capacity() {
-                // Weirdly enough we have to reserve capacity ourselves.
-                self.index.reserve(self.index.size() + 1024).unwrap();
-            }
             self.index.add(id, q).unwrap();
         }
+        progress.finish_and_clear();
+        Ok(())
     }
     // pub fn load(warc_dir: &str) -> Result<SearchProvider, anyhow::Error> {
     //     let start = Instant::now();
@@ -141,10 +150,7 @@ impl SearchProvider {
     //         println!("Recalculating index...");
     //         index.reserve(document_embeddings.len())?;
 
-    //         let progress = ProgressBar::new(total_documents as u64);
-    //         progress.set_style(
-    //             ProgressStyle::with_template("[{elapsed_precise}] {bar}{pos:>7}/{len:7} {msg}")
-    //                 .unwrap(),
+    //         let progress = default_progress_bar(36000);
     //         );
     //         let mut searched_pages_count = 0;
     //         for page in 0..document_embeddings.files() {

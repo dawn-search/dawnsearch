@@ -12,6 +12,7 @@ use std::io::Read;
 
 use crate::page_source::PageSource;
 use crate::util::any_as_u8_slice;
+use crate::util::default_progress_bar;
 use crate::vector::Embedding;
 
 #[derive(Debug)]
@@ -49,10 +50,7 @@ pub fn extract_records_and_add_to_index<T: Read>(
     let mut url_pos: u64 = 0;
     let mut title_pos: u64 = 0;
 
-    let progress = ProgressBar::new(36000);
-    progress.set_style(
-        ProgressStyle::with_template("[{elapsed_precise}] {bar}{pos:>7}/{len:7} {msg}").unwrap(),
-    );
+    let progress = default_progress_bar(36000);
     let mut start = Instant::now();
     let mut speed = 0.0f32;
     let mut per_embedding = 0.0f32;

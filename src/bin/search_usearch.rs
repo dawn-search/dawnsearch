@@ -4,7 +4,7 @@ use std::time::Instant;
 use std::{self, fs};
 use std::{str, usize};
 
-use indicatif::{ProgressBar, ProgressStyle};
+use arecibo::util::default_progress_bar;
 use rust_bert::pipelines::sentence_embeddings::{
     SentenceEmbeddingsBuilder, SentenceEmbeddingsModelType,
 };
@@ -48,11 +48,7 @@ fn main() -> anyhow::Result<()> {
         println!("Recalculating index...");
         index.reserve(document_embeddings.len())?;
 
-        let progress = ProgressBar::new(total_documents as u64);
-        progress.set_style(
-            ProgressStyle::with_template("[{elapsed_precise}] {bar}{pos:>7}/{len:7} {msg}")
-                .unwrap(),
-        );
+        let progress = default_progress_bar(total_documents);
         let mut searched_pages_count = 0;
         for page in 0..document_embeddings.files() {
             for entry in 0..document_embeddings.entries(page) {
