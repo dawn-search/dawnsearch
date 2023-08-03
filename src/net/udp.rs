@@ -37,7 +37,9 @@ pub async fn find_port() -> anyhow::Result<UdpSocket> {
     Ok(socket)
 }
 
-pub async fn udp_server_loop(tx: SyncSender<SearchProviderMessage>) -> Result<(), Box<dyn Error>> {
+pub async fn udp_server_loop(
+    to_search_provider: SyncSender<SearchProviderMessage>,
+) -> Result<(), Box<dyn Error>> {
     // let socket = find_port().await?;
     let socket = UdpSocket::bind("0.0.0.0:0").await?; // Random free port.
     println!("Listening on UDP {}", socket.local_addr()?);
@@ -66,11 +68,12 @@ pub async fn udp_server_loop(tx: SyncSender<SearchProviderMessage>) -> Result<()
                 println!("Received embedding {:?}", em);
                 // Send search message to searchprovider.
                 let (otx, orx) = oneshot::channel();
-                tx.send(SearchProviderMessage::EmbeddingSearch {
-                    otx,
-                    embedding: Box::new(em),
-                })
-                .unwrap();
+                to_search_provider
+                    .send(SearchProviderMessage::EmbeddingSearch {
+                        otx,
+                        embedding: Box::new(em),
+                    })
+                    .unwrap();
                 let result = orx.await.expect("Receiving results");
                 for page in result.pages {
                     // Send message back.

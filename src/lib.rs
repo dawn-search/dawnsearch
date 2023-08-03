@@ -5,6 +5,7 @@ pub mod extraction_loop;
 pub mod messages;
 pub mod net;
 pub mod page_source;
+pub mod search;
 pub mod search_provider;
 pub mod util;
 pub mod vector;
