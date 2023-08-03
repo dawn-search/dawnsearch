@@ -11,7 +11,7 @@ use crate::vector::{Embedding, ToFrom24};
 
 const UDP_PORT: u32 = 7231; // Looks like nobody is using this one yet.
 
-pub async fn run_udp_server(tx: SyncSender<SearchProviderMessage>) -> Result<(), Box<dyn Error>> {
+pub async fn udp_server_loop(tx: SyncSender<SearchProviderMessage>) -> Result<(), Box<dyn Error>> {
     let addr = format!("0.0.0.0:{}", UDP_PORT);
 
     let socket = UdpSocket::bind(&addr).await?;
