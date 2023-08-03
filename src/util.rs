@@ -1,3 +1,5 @@
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use indicatif::{ProgressBar, ProgressStyle};
 
 // See https://github.com/rust-lang/rfcs/issues/2566
@@ -27,4 +29,12 @@ pub fn default_progress_bar(count: usize) -> ProgressBar {
         .progress_chars("=> "),
     );
     progress
+}
+
+/** Timestamp in seconds. */
+pub fn now() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Time travelled to before the epoch")
+        .as_secs()
 }

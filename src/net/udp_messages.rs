@@ -6,11 +6,11 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, PartialEq, Deserialize, Serialize)]
 pub enum UdpMessage {
-    /** Let other peers know we're here. */
-    Announce { id: String },
+    #[serde(rename = "s")]
     Search {
         // search_id: u64,
         /** Embedding quantized as i24, little endian. */
+        #[serde(rename = "e")]
         #[serde(with = "serde_bytes")]
         embedding: Vec<u8>, // 1152
     },
@@ -19,11 +19,33 @@ pub enum UdpMessage {
     // /** Searcher -> Responder. Request to send all results below a certain distance. */
     // PageRequest { search_id: u64, max_distance: f32 },
     /** Responder -> Searcher. Information on a found page. */
+    #[serde(rename = "pg")]
     Page {
         // search_id: u64,
+        #[serde(rename = "d")]
         distance: f32,
-        url: String,   // 200?
+        #[serde(rename = "u")]
+        url: String, // 200?
+        #[serde(rename = "t")]
         title: String, // 200?
-        text: String,  // 500?
+        #[serde(rename = "x")]
+        text: String, // 500?
     },
+    ////////////////////
+    // Tracker messages
+    /** Let other peers know we're here. */
+    #[serde(rename = "a")]
+    Announce { id: String },
+    #[serde(rename = "p")]
+    Peers {
+        #[serde(rename = "p")]
+        peers: Vec<PeerInfo>,
+    },
+}
+
+#[derive(Debug, PartialEq, Deserialize, Serialize, Clone)]
+pub struct PeerInfo {
+    pub id: String,
+    pub addr: String, // TODO: replace by binary value.
+    pub last_seen: u64,
 }
