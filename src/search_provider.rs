@@ -177,7 +177,7 @@ impl SearchProvider {
         bail!("Page not found in DB: {}", id);
     }
 
-    fn search_embedding(
+    pub fn search_embedding(
         &self,
         query_embedding: &Embedding<f32>,
     ) -> Result<SearchResult, anyhow::Error> {

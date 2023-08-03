@@ -34,3 +34,7 @@ aws-config = "0.55.3"
 aws-sdk-s3 = "0.28.0"
 tokio-util = { version = "0.7.8", features = ["io", "io-util"] }
 rusqlite = { version = "0.29.0", features = ["bundled"] }
+serde = "1.0.180"
+rmp-serde = "1.1.2"
+rmp = "0.8.12"
+serde_bytes = "0.11.12"

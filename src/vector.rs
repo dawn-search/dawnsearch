@@ -1,6 +1,6 @@
 use std::iter::zip;
 
-use anyhow::bail;
+use anyhow::{bail, ensure};
 use num::Num;
 use rand::Rng;
 
@@ -21,6 +21,47 @@ impl ToI16 for Embedding<f32> {
         let mut result: [i16; EM_LEN] = [0; EM_LEN];
         for i in 0..EM_LEN {
             result[i] = f32_to_i16(self[i]);
+        }
+        result
+    }
+}
+
+const I24_MAX: u32 = 0x7FFFFF;
+
+pub trait ToFrom24 {
+    fn from24(data: [u8; EM_LEN * 3]) -> anyhow::Result<Embedding<f32>>;
+    fn to24(&self) -> Vec<u8>;
+}
+
+impl ToFrom24 for Embedding<f32> {
+    /** Convert the embedding back into f32 from i24. */
+    fn from24(data: [u8; EM_LEN * 3]) -> anyhow::Result<Embedding<f32>> {
+        let mut result = [0.0f32; EM_LEN];
+        for i in 0..EM_LEN {
+            let mut v: i32 = 0;
+            v |= data[i * 3] as i32;
+            v |= ((data[i * 3 + 1] as i32) << 8) as i32;
+            v |= ((data[i * 3 + 2] as i32) << 16) as i32;
+            // Sign extend.
+            if data[i * 3 + 2] & 0b10000000 > 0 {
+                v |= 0xFF;
+            }
+            result[i] = (v as f64 / I24_MAX as f64 * 2.0 - 1.0) as f32;
+        }
+        ensure!(is_normalized(&result), "Embedding is not normalized");
+        Ok(result)
+    }
+    /** Convert the embedding into i24 to save space. */
+    fn to24(&self) -> Vec<u8> {
+        let mut result = Vec::with_capacity(EM_LEN);
+        for i in 0..EM_LEN {
+            let v = (((self[i] as f64 + 1.0) / 2.0) * I24_MAX as f64) as i32;
+            let a = v & 0xFF;
+            let b = (v >> 8) & 0xFF;
+            let c = (v >> 16) & 0xFF;
+            result.push(a as u8);
+            result.push(b as u8);
+            result.push(c as u8);
         }
         result
     }

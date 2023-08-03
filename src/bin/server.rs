@@ -1,10 +1,11 @@
-use std::str;
 use std::time::Duration;
 use std::{self};
+use std::{env, str};
 
 use arecibo::extraction_loop::start_extraction_loop;
 use arecibo::messages::SearchProviderMessage;
 use arecibo::messages::SearchProviderMessage::*;
+use arecibo::net::udp::run_udp_server;
 use arecibo::search_provider::SearchProvider;
 use arecibo::search_provider::SearchResult;
 use arecibo::util::slice_up_to;
@@ -36,6 +37,10 @@ document.getElementById("searchbox").focus();
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
+    let args: Vec<String> = env::args().collect();
+
+    let should_index = args.iter().any(|x| x == "--index");
+
     let original_shutdown_token = CancellationToken::new();
 
     let shutdown_token = original_shutdown_token.clone();
@@ -56,6 +61,19 @@ async fn main() -> Result<(), anyhow::Error> {
             match message {
                 TextSearch { otx, query } => {
                     let result = match search_provider.search(&query) {
+                        Ok(r) => r,
+                        Err(e) => {
+                            println!("Failed to perform query: {}", e);
+                            SearchResult {
+                                pages: Vec::new(),
+                                pages_searched: 0,
+                            }
+                        }
+                    };
+                    otx.send(result).expect("Send response");
+                }
+                EmbeddingSearch { otx, embedding } => {
+                    let result = match search_provider.search_embedding(&embedding) {
                         Ok(r) => r,
                         Err(e) => {
                             println!("Failed to perform query: {}", e);
@@ -105,11 +123,14 @@ async fn main() -> Result<(), anyhow::Error> {
         }
     });
 
-    let tx2 = tx.clone();
-    tokio::spawn(async move {
-        start_extraction_loop(tx2).await.unwrap();
-    });
+    if should_index {
+        let tx2 = tx.clone();
+        tokio::spawn(async move {
+            start_extraction_loop(tx2).await.unwrap();
+        });
+    }
 
+    let tx2 = tx.clone();
     tokio::spawn(async move {
         let addr = "127.0.0.1:8080";
         // Next up we create a TCP listener which will listen for incoming
@@ -136,7 +157,7 @@ async fn main() -> Result<(), anyhow::Error> {
             // Essentially here we're executing a new task to run concurrently,
             // which will allow all of our clients to be processed concurrently.
 
-            let tx = tx.clone();
+            let tx = tx2.clone();
 
             tokio::spawn(async move {
                 let mut socket = BufReader::new(socket);
@@ -233,6 +254,11 @@ async fn main() -> Result<(), anyhow::Error> {
                     .unwrap();
             });
         }
+    });
+
+    let tx2 = tx.clone();
+    tokio::spawn(async move {
+        run_udp_server(tx2).await.unwrap();
     });
 
     match signal::ctrl_c().await {

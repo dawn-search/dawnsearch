@@ -1,4 +1,4 @@
-use crate::{page_source::ExtractedPage, search_provider::SearchResult};
+use crate::{page_source::ExtractedPage, search_provider::SearchResult, vector::Embedding};
 
 pub enum SearchProviderMessage {
     TextSearch {
@@ -8,6 +8,10 @@ pub enum SearchProviderMessage {
     MoreLikeSearch {
         otx: tokio::sync::oneshot::Sender<SearchResult>,
         id: usize,
+    },
+    EmbeddingSearch {
+        otx: tokio::sync::oneshot::Sender<SearchResult>,
+        embedding: Box<Embedding<f32>>,
     },
     ExtractedPageMessage {
         page: ExtractedPage,
