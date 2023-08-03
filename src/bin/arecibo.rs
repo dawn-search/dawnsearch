@@ -16,6 +16,19 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let should_index = args.iter().any(|x| x == "--index");
 
+    let data_dir = args
+        .iter()
+        .last()
+        .map(|x| {
+            if x.starts_with("--") {
+                None
+            } else {
+                Some(x.to_string())
+            }
+        })
+        .flatten()
+        .unwrap_or(".".to_string());
+
     let original_shutdown_token = CancellationToken::new();
 
     let shutdown_token = original_shutdown_token.clone();
@@ -23,7 +36,7 @@ async fn main() -> Result<(), anyhow::Error> {
     let (tx, rx) = std::sync::mpsc::sync_channel::<SearchProviderMessage>(2);
     let search_provider_tx = tx.clone();
     tokio::task::spawn_blocking(move || {
-        let mut search_provider = match SearchProvider::new(shutdown_token) {
+        let mut search_provider = match SearchProvider::new(data_dir, shutdown_token) {
             Err(e) => {
                 println!("Failed to load search provider {}", e);
                 println!("{}", e.backtrace());

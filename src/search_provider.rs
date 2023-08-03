@@ -1,8 +1,10 @@
 use std::iter::zip;
+use std::path::Path;
 use std::time::Instant;
 use std::{self, fs};
 use std::{str, usize};
 
+use anyhow::anyhow;
 use anyhow::bail;
 use cxx::UniquePtr;
 use rust_bert::pipelines::sentence_embeddings::{
@@ -50,10 +52,14 @@ pub struct SearchProvider {
     sqlite: rusqlite::Connection,
 
     shutdown_token: CancellationToken,
+    data_dir: String,
 }
 
 impl SearchProvider {
-    pub fn new(shutdown_token: CancellationToken) -> Result<SearchProvider, anyhow::Error> {
+    pub fn new(
+        data_dir: String,
+        shutdown_token: CancellationToken,
+    ) -> Result<SearchProvider, anyhow::Error> {
         let start = Instant::now();
         print!("[Search Provider] Loading model...");
         let model = SentenceEmbeddingsBuilder::remote(SentenceEmbeddingsModelType::AllMiniLmL6V2)
@@ -64,7 +70,7 @@ impl SearchProvider {
         println!(" {} ms", duration.as_millis());
 
         // Database
-        let sqlite = rusqlite::Connection::open("arecibo.sqlite")?;
+        let sqlite = rusqlite::Connection::open(Path::new(&data_dir).join("arecibo.sqlite"))?;
 
         // Create DB structure
         sqlite.execute(
@@ -85,16 +91,20 @@ impl SearchProvider {
         )?;
 
         // Index
-        let index = new_index(&INDEX_OPTIONS).unwrap();
+        let index = new_index(&INDEX_OPTIONS)?;
 
         let mut search_provider = SearchProvider {
             model,
             index,
             sqlite,
             shutdown_token: shutdown_token.clone(),
+            data_dir: data_dir.clone(),
         };
 
-        let index_path = "index.usearch";
+        let index_path_path = Path::new(&data_dir).join("index.usearch");
+        let index_path = index_path_path
+            .to_str()
+            .ok_or(anyhow!("Could not convert path to string"))?;
         if !fs::metadata(index_path).is_ok() || !search_provider.index.load(index_path).is_ok() {
             search_provider.fill_index_from_db()?;
             search_provider.index.save(index_path)?;
@@ -150,7 +160,10 @@ impl SearchProvider {
     }
 
     pub fn save(&mut self) -> anyhow::Result<()> {
-        let path = "index.usearch";
+        let index_path_path = Path::new(&self.data_dir).join("index.usearch");
+        let path = index_path_path
+            .to_str()
+            .ok_or(anyhow!("Could not convert index path"))?;
         self.index.save(path)?;
         println!("[Search Provider] Saved index to {}", path);
         Ok(())
