@@ -45,7 +45,7 @@ fn format_results(result: &SearchResult) -> String {
 }
 
 pub async fn http_server_loop(tx2: SyncSender<SearchProviderMessage>) -> anyhow::Result<()> {
-    let addr = "127.0.0.1:8080";
+    let addr = "0.0.0.0:8080";
     // Next up we create a TCP listener which will listen for incoming
     // connections. This TCP listener is bound to the address we determined
     // above and must be associated with an event loop.
