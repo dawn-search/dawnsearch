@@ -1,9 +1,9 @@
-use arecibo::index::extraction_loop::start_extraction_loop;
-use arecibo::net::http::http_server_loop;
-use arecibo::net::udp_service::{UdpM, UdpService};
-use arecibo::search::messages::SearchProviderMessage;
-use arecibo::search::messages::SearchProviderMessage::*;
-use arecibo::search::search_service::SearchService;
+use dawnsearch::index::extraction_loop::start_extraction_loop;
+use dawnsearch::net::http::http_server_loop;
+use dawnsearch::net::udp_service::{UdpM, UdpService};
+use dawnsearch::search::messages::SearchProviderMessage;
+use dawnsearch::search::messages::SearchProviderMessage::*;
+use dawnsearch::search::search_service::SearchService;
 use std::env;
 use std::time::Duration;
 use tokio::signal;

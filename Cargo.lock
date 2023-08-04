@@ -61,41 +61,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3b13c32d80ecc7ab747b80c3784bce54ee8a7a0cc4fbda9bf4cda2cf6fe90854"
 
 [[package]]
-name = "arecibo"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "aws-config",
- "aws-sdk-s3",
- "cxx",
- "flate2",
- "html-escape",
- "html5ever",
- "igd",
- "indicatif 0.17.5",
- "markup5ever_rcdom",
- "network-interface",
- "num",
- "rand 0.8.5",
- "readability",
- "reqwest",
- "rmp",
- "rmp-serde",
- "rusqlite",
- "rust-bert",
- "serde",
- "serde_bytes",
- "smaz",
- "tch",
- "tokio",
- "tokio-util",
- "url",
- "urlencoding",
- "usearch",
- "whichlang",
-]
-
-[[package]]
 name = "attohttpc"
 version = "0.16.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -822,6 +787,41 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.28",
+]
+
+[[package]]
+name = "dawnsearch"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "aws-config",
+ "aws-sdk-s3",
+ "cxx",
+ "flate2",
+ "html-escape",
+ "html5ever",
+ "igd",
+ "indicatif 0.17.5",
+ "markup5ever_rcdom",
+ "network-interface",
+ "num",
+ "rand 0.8.5",
+ "readability",
+ "reqwest",
+ "rmp",
+ "rmp-serde",
+ "rusqlite",
+ "rust-bert",
+ "serde",
+ "serde_bytes",
+ "smaz",
+ "tch",
+ "tokio",
+ "tokio-util",
+ "url",
+ "urlencoding",
+ "usearch",
+ "whichlang",
 ]
 
 [[package]]

@@ -65,7 +65,7 @@ impl SearchProvider {
         println!(" {} ms", duration.as_millis());
 
         // Database
-        let sqlite = rusqlite::Connection::open(Path::new(&data_dir).join("arecibo.sqlite"))?;
+        let sqlite = rusqlite::Connection::open(Path::new(&data_dir).join("dawnsearch.sqlite"))?;
 
         // Create DB structure
         sqlite.execute(

@@ -270,7 +270,7 @@ fn update_upnp(listening_port: u16) -> anyhow::Result<()> {
                             listening_port,
                             SocketAddrV4::new(a.ip, listening_port),
                             600,
-                            "Arecibo",
+                            "DawnSearch",
                         ) {
                             println!(
                                 "[UPnP] Could not add mapping from {} to {}: {}",

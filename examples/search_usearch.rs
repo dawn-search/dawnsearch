@@ -4,15 +4,15 @@ use std::time::Instant;
 use std::{self, fs};
 use std::{str, usize};
 
-use arecibo::util::default_progress_bar;
+use dawnsearch::util::default_progress_bar;
 use rust_bert::pipelines::sentence_embeddings::{
     SentenceEmbeddingsBuilder, SentenceEmbeddingsModelType,
 };
 use std::env;
 use usearch::ffi::{new_index, IndexOptions, MetricKind, ScalarKind};
 
-use arecibo::document_embeddings::DocumentEmbeddings;
-use arecibo::vector::{Embedding, EM_LEN};
+use dawnsearch::document_embeddings::DocumentEmbeddings;
+use dawnsearch::vector::{Embedding, EM_LEN};
 
 fn main() -> anyhow::Result<()> {
     let args: Vec<String> = env::args().collect();

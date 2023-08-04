@@ -8,7 +8,7 @@ use anyhow::Context;
 use html5ever::{parse_document, tendril::TendrilSink};
 use markup5ever_rcdom::RcDom;
 
-use arecibo::extract::{extract, extract_text, find_links};
+use dawnsearch::extract::{extract, extract_text, find_links};
 use postgres::{Client, NoTls};
 use url::{ParseError, Url};
 
@@ -19,7 +19,7 @@ fn main() -> anyhow::Result<()> {
     fs::create_dir_all("store")?;
 
     let mut client = Client::connect(
-        "host=localhost dbname=arecibo user=arecibo password=arecibo",
+        "host=localhost dbname=dawnsearch user=dawnsearch password=dawnsearch",
         NoTls,
     )?;
 
@@ -148,7 +148,7 @@ fn main() -> anyhow::Result<()> {
     // Let's go crawl!
     fn agent() -> ureq::Agent {
         ureq::AgentBuilder::new()
-            .user_agent("Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Arecibot/0.1; https://localhost/todo/fill/this/in) Chrome/115.0.0.0 Safari/537.36")
+            .user_agent("Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; DawnSearcht/0.1; https://localhost/todo/fill/this/in) Chrome/115.0.0.0 Safari/537.36")
             .max_idle_connections(0)
             .timeout(Duration::from_secs(2))
             .build()

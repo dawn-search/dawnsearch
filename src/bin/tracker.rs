@@ -1,5 +1,5 @@
-use arecibo::net::udp_messages::{PeerInfo, UdpMessage};
-use arecibo::util::now;
+use dawnsearch::net::udp_messages::{PeerInfo, UdpMessage};
+use dawnsearch::util::now;
 use rmp_serde::{Deserializer, Serializer};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

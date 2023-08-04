@@ -4,8 +4,8 @@ use rust_bert::pipelines::sentence_embeddings::{
     SentenceEmbeddingsBuilder, SentenceEmbeddingsModelType,
 };
 
-use arecibo::warc::extract_records_and_add_to_index;
 use aws_sdk_s3 as s3;
+use dawnsearch::warc::extract_records_and_add_to_index;
 use url::Url;
 
 /**

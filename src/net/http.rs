@@ -11,7 +11,7 @@ fn search_page(results: &str) -> String {
     format!(
         r###"
 <html>
-<head><title>Arecibo</title></head>
+<head><title>DawnSearch</title></head>
 <body style="margin: 2em">
 <form method="get">
 <input name="q" id="searchbox">

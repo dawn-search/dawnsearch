@@ -1,6 +1,6 @@
 use rand::prelude::*;
 
-use arecibo::vector::{distance_i8, EM_LEN};
+use dawnsearch::vector::{distance_i8, EM_LEN};
 
 type Embedding = [i8; EM_LEN];
 

@@ -8,8 +8,8 @@ use rust_bert::pipelines::sentence_embeddings::{
 };
 use std::env;
 
-use arecibo::document_embeddings::DocumentEmbeddings;
-use arecibo::vector::{Distance, EM_LEN};
+use dawnsearch::document_embeddings::DocumentEmbeddings;
+use dawnsearch::vector::{Distance, EM_LEN};
 
 fn main() -> anyhow::Result<()> {
     let args: Vec<String> = env::args().collect();

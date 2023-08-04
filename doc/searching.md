@@ -1,6 +1,6 @@
 # Searching the Network
 
-- Arecibo first calculates the embedding of the query string, and quantizes it.
+- DawnSearch first calculates the embedding of the query string, and quantizes it.
 - The query is sent to the closest node we know of, with a cutoff distance and a max number of results.
 - If the node has these results, it sends them back. Otherwise it sends a list of nodes that are closer to the search.
 - We can then contact these nodes.
@@ -21,6 +21,6 @@
 
 # Hierarchical Navigable Small World
 
-Arecibo will effectively be a two layer HNSW search. The first one will find the node that contains that data, then the node will use HNSW itself to find the data you need.
+DawnSearch will effectively be a two layer HNSW search. The first one will find the node that contains that data, then the node will use HNSW itself to find the data you need.
 
 https://github.com/rust-cv/hnsw

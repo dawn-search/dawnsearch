@@ -4,7 +4,7 @@ use rust_bert::pipelines::sentence_embeddings::{
     SentenceEmbeddingsBuilder, SentenceEmbeddingsModelType,
 };
 
-use arecibo::warc::extract_records_and_add_to_index;
+use dawnsearch::warc::extract_records_and_add_to_index;
 
 fn main() -> anyhow::Result<()> {
     let args: Vec<String> = env::args().collect();

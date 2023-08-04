@@ -10,11 +10,11 @@ use rust_bert::pipelines::sentence_embeddings::{
 };
 use std::env;
 
-use arecibo::best_results::{BestResults, NodeReference};
-use arecibo::document_embeddings::DocumentEmbeddings;
-use arecibo::vector::{random_address, Distance, EM_LEN};
+use dawnsearch::best_results::{BestResults, NodeReference};
+use dawnsearch::document_embeddings::DocumentEmbeddings;
+use dawnsearch::vector::{random_address, Distance, EM_LEN};
 
-use arecibo::vector::Embedding;
+use dawnsearch::vector::Embedding;
 
 struct NswNode {
     address: Embedding<f32>,

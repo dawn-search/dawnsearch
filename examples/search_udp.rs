@@ -2,14 +2,14 @@ use std::io::{self, BufRead, Write};
 use std::net::UdpSocket;
 use std::time::Instant;
 
-use arecibo::net::udp_messages::UdpMessage;
+use dawnsearch::net::udp_messages::UdpMessage;
 use rmp_serde::Serializer;
 use rust_bert::pipelines::sentence_embeddings::{
     SentenceEmbeddingsBuilder, SentenceEmbeddingsModelType,
 };
 use serde::Serialize;
 
-use arecibo::vector::{Embedding, ToFrom24};
+use dawnsearch::vector::{Embedding, ToFrom24};
 
 fn main() -> anyhow::Result<()> {
     let start = Instant::now();

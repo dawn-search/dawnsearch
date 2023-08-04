@@ -3,14 +3,14 @@ use std::time::Instant;
 use std::{self};
 use std::{str, usize};
 
-use arecibo::best_results::{BestResults, NodeReference};
+use dawnsearch::best_results::{BestResults, NodeReference};
 use rust_bert::pipelines::sentence_embeddings::{
     SentenceEmbeddingsBuilder, SentenceEmbeddingsModelType,
 };
 use std::env;
 
-use arecibo::document_embeddings::DocumentEmbeddings;
-use arecibo::vector::{Distance, Embedding, ToI16, EM_LEN};
+use dawnsearch::document_embeddings::DocumentEmbeddings;
+use dawnsearch::vector::{Distance, Embedding, ToI16, EM_LEN};
 
 const BUCKET_COUNT: usize = 200;
 const INSERT_COUNT: usize = 3;
