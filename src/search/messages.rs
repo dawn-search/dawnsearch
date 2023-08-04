@@ -16,6 +16,7 @@ pub enum SearchProviderMessage {
     },
     ExtractedPageMessage {
         page: ExtractedPage,
+        from_network: bool,
     },
     Save,
     Shutdown,

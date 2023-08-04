@@ -33,6 +33,17 @@ pub enum UdpMessage {
         #[serde(rename = "x")]
         text: String, // 500?
     },
+    Insert {
+        #[serde(rename = "us")]
+        #[serde(with = "serde_bytes")]
+        url_smaz: Vec<u8>,
+        #[serde(rename = "ts")]
+        #[serde(with = "serde_bytes")]
+        title_smaz: Vec<u8>,
+        #[serde(rename = "xs")]
+        #[serde(with = "serde_bytes")]
+        text_smaz: Vec<u8>,
+    },
     ////////////////////
     // Tracker messages
     /** Let other peers know we're here. */

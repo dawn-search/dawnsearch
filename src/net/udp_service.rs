@@ -1,8 +1,10 @@
 use crate::net::udp_messages::{PeerInfo, UdpMessage};
 use crate::search::messages::SearchProviderMessage;
+use crate::search::page_source::ExtractedPage;
 use crate::search::vector::{Embedding, ToFrom24};
 use crate::util::slice_up_to;
 use anyhow::bail;
+use rand::seq::SliceRandom;
 use rand::Rng;
 use rmp_serde::{Deserializer, Serializer};
 use serde::{Deserialize, Serialize};
@@ -68,6 +70,9 @@ pub enum UdpM {
     },
     Tick {},
     Announce {},
+    Insert {
+        page: ExtractedPage,
+    },
 }
 
 pub struct UdpService {
@@ -97,7 +102,13 @@ impl UdpService {
                 v = socket.recv_from(&mut buf) => {
                     let (len, addr) = v.unwrap();
                     let mut de = Deserializer::new(&buf[..len]);
-                    let message: UdpMessage = Deserialize::deserialize(&mut de).unwrap();
+                    let message: UdpMessage = match Deserialize::deserialize(&mut de) {
+                        Ok(m) => m,
+                        Err(e) => {
+                            println!("Error receiving packet {}", e);
+                            continue;
+                        }
+                    };
 
                     match message {
                         UdpMessage::Search { search_id, embedding } => {
@@ -136,10 +147,26 @@ impl UdpService {
                             } else {
                                 println!("Search result for unknown search {}", search_id);
                             }
+                        },
+                        UdpMessage::Insert { url_smaz, title_smaz, text_smaz } => {
+                            let url = String::from_utf8_lossy(&smaz::decompress(&url_smaz).unwrap()).to_string();
+                            let title = String::from_utf8_lossy(&smaz::decompress(&title_smaz).unwrap()).to_string();
+                            let text = String::from_utf8_lossy(&smaz::decompress(&text_smaz).unwrap()).to_string();
+                            let mut combined = title.to_string();
+                            combined.push(' ');
+                            combined.push_str(&text);
+                            println!("Received insert for {}", url);
+                            self.search_provider_tx.send(SearchProviderMessage::ExtractedPageMessage {
+                                page: ExtractedPage {
+                                    url,
+                                    title,
+                                    text,
+                                    combined
+                                },
+                                from_network: true
+                            })?;
                         }
-                        x => {
-                            println!("Unhandled UDP message: {:?}", x);
-                        }
+                        UdpMessage::Announce {..} => {}
                     }
                 }
                 v = self.udp_rx.recv() => {
@@ -192,6 +219,24 @@ impl UdpService {
                                 .serialize(&mut Serializer::new(&mut send_buf))
                                 .unwrap();
                             socket.send_to(&send_buf, "127.0.0.1:7230").await?;
+                        },
+                        UdpM::Insert { page } => {
+                            let message = UdpMessage::Insert {
+                                url_smaz: smaz::compress(page.url.as_bytes()),
+                                title_smaz: smaz::compress(page.title.as_bytes()),
+                                text_smaz: smaz::compress(page.text.as_bytes()),
+                            };
+                            send_buf.clear();
+                            message
+                                .serialize(&mut Serializer::new(&mut send_buf))
+                                .unwrap();
+                            println!("Insert message size {}", send_buf.len());
+
+                            // For now, insert with three random peers.
+                            let peers: Vec<&PeerInfo> = { known_peers.choose_multiple(&mut rand::thread_rng(), 3).collect() } ;
+                            for peer in peers {
+                                socket.send_to(&send_buf, &peer.addr).await?;
+                            }
                         }
                     }
                 }

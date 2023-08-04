@@ -106,10 +106,21 @@ impl SearchService {
                     };
                     otx.send(result).expect("Send response");
                 }
-                ExtractedPageMessage { page } => match search_provider.insert(page) {
-                    Err(e) => println!("Failed to insert {}", e),
-                    _ => {}
-                },
+                ExtractedPageMessage { page, from_network } => {
+                    if search_provider.local_space_available() {
+                        match search_provider.insert(page.clone()) {
+                            Err(e) => println!("Failed to insert {}", e),
+                            _ => {}
+                        }
+                    }
+                    if !from_network {
+                        // Insert on the network.
+                        let tx = self.udp_tx.clone();
+                        tokio::spawn(async move {
+                            tx.send(UdpM::Insert { page }).await.unwrap();
+                        });
+                    }
+                }
                 Save => {
                     search_provider.save().unwrap();
                 }

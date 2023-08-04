@@ -149,6 +149,10 @@ impl SearchProvider {
         Ok(count)
     }
 
+    pub fn local_space_available(&mut self) -> bool {
+        self.page_count().unwrap() < 500000
+    }
+
     pub fn shutdown(&mut self) -> anyhow::Result<()> {
         self.save()?;
         Ok(())
@@ -234,6 +238,9 @@ impl SearchProvider {
     }
 
     pub fn insert(&mut self, page: ExtractedPage) -> Result<(), anyhow::Error> {
+        if !self.local_space_available() {
+            bail!("No space available");
+        }
         let mut find_by_url = self
             .sqlite
             .prepare("SELECT id FROM page WHERE url = ?1")
