@@ -7,6 +7,9 @@ default-run = "arecibo"
 [features]
 s3 = ["aws-config", "aws-sdk-s3"]
 
+[profile.release]
+lto = "thin"
+
 [lib]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -19,7 +22,7 @@ whichlang = "0.1.0"
 indicatif = "0.17.5"
 tch = "^0.13.0"
 readability = "0.2.0"
-anyhow = { version = "1.0.72", features = ["backtrace"] }
+anyhow = { version = "1.0.72" }
 html5ever = "0.25"
 markup5ever_rcdom = "0.1"
 rand = "0.8.5"
