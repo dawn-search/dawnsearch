@@ -12,6 +12,7 @@ TODO
 - Demo instance
 - Instructions on how to run Arecibo as a service
 - Clean up dependencies
+- Insert to close nodes
 
 # Less-technical release
 
