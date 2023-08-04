@@ -57,6 +57,7 @@ impl SearchService {
                         let mut r2 = result.pages;
 
                         // Add our own results to this.
+                        let total_pages = result.pages_searched;
                         for x in r {
                             r2.push(FoundPage {
                                 id: 0,
@@ -65,11 +66,12 @@ impl SearchService {
                                 url: x.url,
                                 text: x.text,
                             });
+                            // TODO: add pages searched from the network.
                         }
 
                         otx.send(SearchResult {
                             pages: r2,
-                            pages_searched: 0,
+                            pages_searched: total_pages,
                         })
                         .expect("Send response");
                     });
