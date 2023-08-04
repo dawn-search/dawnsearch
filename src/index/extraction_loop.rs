@@ -46,32 +46,35 @@ async fn extract_file(
 ) -> Result<(), anyhow::Error> {
     println!("Indexing {}", random_file);
 
-    let use_aws = true;
+    let allow_aws = true;
 
-    if use_aws {
-        let config = ::aws_config::load_from_env().await;
-        let client = aws_sdk_s3::Client::new(&config);
+    if allow_aws && cfg!(s3) {
+        #[cfg(feature = "s3")]
+        {
+            let config = ::aws_config::load_from_env().await;
+            let client = aws_sdk_s3::Client::new(&config);
 
-        let response_async = client
-            .get_object()
-            .bucket("commoncrawl")
-            .key(random_file)
-            .send()
-            .await?
-            .body
-            .into_async_read();
+            let response_async = client
+                .get_object()
+                .bucket("commoncrawl")
+                .key(random_file)
+                .send()
+                .await?
+                .body
+                .into_async_read();
 
-        tokio::task::spawn_blocking(move || -> Result<(), anyhow::Error> {
-            let response = tokio_util::io::SyncIoBridge::new(response_async);
+            tokio::task::spawn_blocking(move || -> Result<(), anyhow::Error> {
+                let response = tokio_util::io::SyncIoBridge::new(response_async);
 
-            let mut page_source = PageSource::read_warc_gz(response);
+                let mut page_source = PageSource::read_warc_gz(response);
 
-            while let Some(page) = page_source.next()? {
-                sender.send(SearchProviderMessage::ExtractedPageMessage { page })?;
-            }
-            Ok(())
-        })
-        .await??;
+                while let Some(page) = page_source.next()? {
+                    sender.send(SearchProviderMessage::ExtractedPageMessage { page })?;
+                }
+                Ok(())
+            })
+            .await??;
+        }
     } else {
         let mut url_string = "https://data.commoncrawl.org/".to_string();
         url_string.push_str(random_file);
