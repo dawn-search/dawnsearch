@@ -113,6 +113,16 @@ pub async fn http_server_loop(tx2: SyncSender<SearchProviderMessage>) -> anyhow:
                 None
             };
 
+            if path == "/robots.txt" {
+                socket
+                    .write_all(
+                        "HTTP/1.1 200 OK\r\n\r\nUser-agent: *\r\nDisallow: /?\r\n".as_bytes(),
+                    )
+                    .await
+                    .unwrap();
+                return;
+            }
+
             if path != "/" {
                 socket
                     .write_all("HTTP/1.1 404 Not Found\r\n\r\n".as_bytes())
