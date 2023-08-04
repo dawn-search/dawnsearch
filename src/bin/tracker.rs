@@ -24,12 +24,16 @@ async fn main() -> anyhow::Result<()> {
                 peers.insert(
                     id.clone(),
                     PeerInfo {
-                        id,
+                        id: id.clone(),
                         addr: addr.to_string(),
                         last_seen: now(),
                     },
                 );
-                let all: Vec<PeerInfo> = peers.values().map(|x| x.clone()).collect();
+                let all: Vec<PeerInfo> = peers
+                    .values()
+                    .filter(|p| p.id != id && now() - p.last_seen < 10 * 60)
+                    .map(|x| x.clone())
+                    .collect();
                 let response = UdpMessage::Peers { peers: all };
                 send_buf.clear();
                 response

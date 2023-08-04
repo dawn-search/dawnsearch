@@ -1,16 +1,12 @@
+use flate2::read::MultiGzDecoder;
+use rand::Rng;
 use std::{
     io::{BufRead, BufReader},
     sync::mpsc::SyncSender,
     time::Duration,
 };
 
-use flate2::read::MultiGzDecoder;
-use rand::Rng;
-
-use crate::page_source::PageSource;
-
-use crate::messages::SearchProviderMessage;
-use crate::messages::SearchProviderMessage::*;
+use crate::search::{messages::SearchProviderMessage, page_source::PageSource};
 
 /** The URL from which we will download the gzipped WARC file list for extracting. */
 const WARC_FILE_LIST: &str =
@@ -71,7 +67,7 @@ async fn extract_file(
             let mut page_source = PageSource::read_warc_gz(response);
 
             while let Some(page) = page_source.next()? {
-                sender.send(ExtractedPageMessage { page })?;
+                sender.send(SearchProviderMessage::ExtractedPageMessage { page })?;
             }
             Ok(())
         })
@@ -86,7 +82,7 @@ async fn extract_file(
             let mut page_source = PageSource::read_warc_gz(response);
 
             while let Some(page) = page_source.next()? {
-                sender.send(ExtractedPageMessage { page })?;
+                sender.send(SearchProviderMessage::ExtractedPageMessage { page })?;
             }
             Ok(())
         })

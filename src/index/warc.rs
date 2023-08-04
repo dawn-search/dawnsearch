@@ -1,17 +1,15 @@
+use crate::search::page_source::PageSource;
+use crate::search::vector::Embedding;
+use crate::util::any_as_u8_slice;
+use crate::util::default_progress_bar;
+use rust_bert::pipelines::sentence_embeddings::SentenceEmbeddingsModel;
 use std;
 use std::fs::File;
 use std::io;
+use std::io::Read;
 use std::io::Write;
 use std::path::PathBuf;
 use std::time::Instant;
-
-use rust_bert::pipelines::sentence_embeddings::SentenceEmbeddingsModel;
-use std::io::Read;
-
-use crate::page_source::PageSource;
-use crate::util::any_as_u8_slice;
-use crate::util::default_progress_bar;
-use crate::vector::Embedding;
 
 #[derive(Debug)]
 #[repr(C)]

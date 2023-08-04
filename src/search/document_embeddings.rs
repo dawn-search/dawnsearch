@@ -2,7 +2,7 @@ use std::fs::File;
 
 use memmap2::{Mmap, MmapOptions};
 
-use crate::warc::PageEntry;
+use crate::index::warc::PageEntry;
 
 /**
  * Memory mapped list of embeddings.

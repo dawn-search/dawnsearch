@@ -1,23 +1,21 @@
-use std::iter::zip;
-use std::path::Path;
-use std::time::Instant;
-use std::{self, fs};
-use std::{str, usize};
-
+use crate::search::page_source::ExtractedPage;
+use crate::search::vector::{
+    bytes_to_embedding, is_normalized, vector_embedding_to_bytes, Embedding, EM_LEN,
+};
+use crate::util::default_progress_bar;
 use anyhow::anyhow;
 use anyhow::bail;
 use cxx::UniquePtr;
 use rust_bert::pipelines::sentence_embeddings::{
     SentenceEmbeddingsBuilder, SentenceEmbeddingsModel, SentenceEmbeddingsModelType,
 };
+use std::iter::zip;
+use std::path::Path;
+use std::time::Instant;
+use std::{self, fs};
+use std::{str, usize};
 use tokio_util::sync::CancellationToken;
 use usearch::ffi::{new_index, Index, IndexOptions, MetricKind, ScalarKind};
-
-use crate::page_source::ExtractedPage;
-use crate::util::default_progress_bar;
-use crate::vector::{
-    bytes_to_embedding, is_normalized, vector_embedding_to_bytes, Embedding, EM_LEN,
-};
 
 // Remove the index when you change any of these values!
 const INDEX_OPTIONS: IndexOptions = IndexOptions {
@@ -42,7 +40,6 @@ pub struct FoundPage {
     pub url: String,
     pub title: String,
     pub text: String,
-    pub embedding: Vec<f32>,
 }
 
 pub struct SearchProvider {
@@ -169,11 +166,13 @@ impl SearchProvider {
         Ok(())
     }
 
+    pub fn get_embedding(&self, query: &str) -> anyhow::Result<Vec<f32>> {
+        Ok((self.model.encode(&[query])?[0].clone()))
+    }
+
     pub fn search(&self, query: &str) -> Result<SearchResult, anyhow::Error> {
         let q = &self.model.encode(&[query])?[0];
-        let query_embedding: &Embedding<f32> = q.as_slice().try_into()?;
-
-        self.search_embedding(query_embedding)
+        self.search_embedding(q)
     }
 
     pub fn search_like(&self, id: usize) -> Result<SearchResult, anyhow::Error> {
@@ -185,16 +184,16 @@ impl SearchProvider {
             let embedding_bytes: Vec<u8> = r.get(0)?;
             let embedding = unsafe { bytes_to_embedding(embedding_bytes.as_slice().try_into()?)? };
 
-            return self.search_embedding(embedding);
+            return self.search_embedding(&embedding.to_vec());
         }
         bail!("Page not found in DB: {}", id);
     }
 
     pub fn search_embedding(
         &self,
-        query_embedding: &Embedding<f32>,
+        query_embedding: &Vec<f32>,
     ) -> Result<SearchResult, anyhow::Error> {
-        if !is_normalized(query_embedding) {
+        if !is_normalized(query_embedding.as_slice().try_into()?) {
             bail!("Search vector is not normalized");
         }
         let mut pages = Vec::new();
@@ -208,7 +207,7 @@ impl SearchProvider {
 
         let mut s = self
             .sqlite
-            .prepare("SELECT id, url, title, text, embedding FROM page WHERE id  = ?1")?;
+            .prepare("SELECT id, url, title, text FROM page WHERE id  = ?1")?;
         for (distance, id) in zip(results.distances, results.labels) {
             let mut qq = s.query(&[&id])?;
             if let Some(r) = qq.next()? {
@@ -216,7 +215,6 @@ impl SearchProvider {
                 let url = r.get(1)?;
                 let title = r.get(2)?;
                 let text: String = r.get(3)?;
-                let embedding_bytes: Vec<u8> = r.get(4)?;
 
                 pages.push(FoundPage {
                     id: id as usize,
@@ -224,8 +222,6 @@ impl SearchProvider {
                     url,
                     title,
                     text,
-                    embedding: unsafe { bytes_to_embedding(&embedding_bytes.try_into().unwrap())? }
-                        .to_vec(),
                 });
             } else {
                 println!("Page not found in DB: {}", id);

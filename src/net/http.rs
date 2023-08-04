@@ -1,6 +1,6 @@
-use crate::messages::SearchProviderMessage;
-use crate::messages::SearchProviderMessage::*;
-use crate::search_provider::SearchResult;
+use crate::search::messages::SearchProviderMessage;
+use crate::search::messages::SearchProviderMessage::*;
+use crate::search::search_provider::SearchResult;
 use crate::util::slice_up_to;
 use std::sync::mpsc::SyncSender;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};

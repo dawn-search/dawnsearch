@@ -11,8 +11,8 @@ use url::Url;
 use whichlang::detect_language;
 use whichlang::Lang;
 
-use crate::extract::extract;
-use crate::extract::extract_text;
+use crate::index::extract::extract;
+use crate::index::extract::extract_text;
 use crate::util::slice_up_to;
 
 struct RecordOwned {

@@ -1,8 +1,8 @@
-use arecibo::extraction_loop::start_extraction_loop;
-use arecibo::messages::SearchProviderMessage;
-use arecibo::messages::SearchProviderMessage::*;
+use arecibo::index::extraction_loop::start_extraction_loop;
 use arecibo::net::http::http_server_loop;
-use arecibo::net::udp::udp_server_loop;
+use arecibo::net::udp_service::{UdpM, UdpService};
+use arecibo::search::messages::SearchProviderMessage;
+use arecibo::search::messages::SearchProviderMessage::*;
 use arecibo::search::search_service::SearchService;
 use std::env;
 use std::time::Duration;
@@ -37,12 +37,16 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let (search_provider_sender, search_provider_receiver) =
         std::sync::mpsc::sync_channel::<SearchProviderMessage>(2);
+    let (udp_tx, udp_rx) = tokio::sync::mpsc::channel::<UdpM>(2);
+
     let search_provider_tx = search_provider_sender.clone();
+    let udp_tx2 = udp_tx.clone();
     tokio::task::spawn_blocking(move || {
         SearchService {
             data_dir,
             shutdown_token,
             search_provider_receiver,
+            udp_tx: udp_tx2,
         }
         .start();
     });
@@ -69,9 +73,27 @@ async fn main() -> Result<(), anyhow::Error> {
         http_server_loop(tx2).await.unwrap();
     });
 
-    let tx2 = search_provider_sender.clone();
+    let udp_service = UdpService {
+        search_provider_tx: search_provider_sender.clone(),
+        udp_rx,
+    };
+    tokio::spawn(udp_service.start());
+
+    // Timer loop.
+    let udp_tx2 = udp_tx.clone();
     tokio::spawn(async move {
-        udp_server_loop(tx2).await.unwrap();
+        loop {
+            tokio::time::sleep(Duration::from_millis(50)).await;
+            udp_tx2.send(UdpM::Tick {}).await.unwrap();
+        }
+    });
+    // Announce loop.
+    let udp_tx2 = udp_tx.clone();
+    tokio::spawn(async move {
+        loop {
+            tokio::time::sleep(Duration::from_secs(5)).await;
+            udp_tx2.send(UdpM::Announce {}).await.unwrap();
+        }
     });
 
     match signal::ctrl_c().await {

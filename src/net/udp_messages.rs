@@ -8,7 +8,8 @@ use serde::{Deserialize, Serialize};
 pub enum UdpMessage {
     #[serde(rename = "s")]
     Search {
-        // search_id: u64,
+        #[serde(rename = "i")]
+        search_id: u64,
         /** Embedding quantized as i24, little endian. */
         #[serde(rename = "e")]
         #[serde(with = "serde_bytes")]
@@ -21,7 +22,8 @@ pub enum UdpMessage {
     /** Responder -> Searcher. Information on a found page. */
     #[serde(rename = "pg")]
     Page {
-        // search_id: u64,
+        #[serde(rename = "i")]
+        search_id: u64,
         #[serde(rename = "d")]
         distance: f32,
         #[serde(rename = "u")]
