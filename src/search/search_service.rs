@@ -42,9 +42,7 @@ impl SearchService {
                     };
 
                     let udp_tx2 = self.udp_tx.clone();
-                    println!("Spawning background search");
                     tokio::spawn(async move {
-                        println!("Background search running");
                         // Also fire it off to the network.
                         let (otxx, orxx) = oneshot::channel();
                         udp_tx2
@@ -54,9 +52,7 @@ impl SearchService {
                             })
                             .await
                             .unwrap();
-                        println!("Waiting for results");
                         let r = orxx.await.unwrap();
-                        println!("Results: {:?}", r);
 
                         let mut r2 = result.pages;
 
@@ -71,13 +67,11 @@ impl SearchService {
                             });
                         }
 
-                        println!("[Search Service] Sending results back");
                         otx.send(SearchResult {
                             pages: r2,
                             pages_searched: 0,
                         })
                         .expect("Send response");
-                        println!("[Search Service] Done");
                     });
                 }
                 EmbeddingSearch { otx, embedding } => {

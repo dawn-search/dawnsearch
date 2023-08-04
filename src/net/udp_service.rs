@@ -58,7 +58,7 @@ pub struct PageFromNetwork {
 pub struct ActiveSearch {
     search_id: u64,
     results: Vec<PageFromNetwork>,
-    start: Instant,
+    deadline: Instant,
     /** Channel to which we send the results. */
     tx: oneshot::Sender<Vec<PageFromNetwork>>,
 }
@@ -176,10 +176,14 @@ impl UdpService {
                         UdpM::Search { embedding, tx } => {
                             let search_id: u64 = rand::thread_rng().gen();
                             println!("[UDP] Search started with id {}", search_id);
+                            let mut deadline = Instant::now();
+                            if known_peers.len() > 0 {
+                                deadline = deadline.checked_add(Duration::from_millis(200)).unwrap();
+                            }
                             active_searches.insert(search_id, ActiveSearch {
                                 search_id,
                                 results: Vec::new(),
-                                start: Instant::now(),
+                                deadline,
                                 tx,
                             });
 
@@ -199,10 +203,9 @@ impl UdpService {
                             }
                         }
                         UdpM::Tick { } => {
-                            let to_remove: Vec<u64> = active_searches.values().filter(|v| v.start.elapsed() > Duration::from_millis(200)).map(|v| v.search_id).collect();
+                            let to_remove: Vec<u64> = active_searches.values().filter(|v| Instant::now() > v.deadline).map(|v| v.search_id).collect();
                             for t in to_remove {
                                 let removed = active_searches.remove(&t).unwrap();
-                                println!("Search time expired, sending {:?}", removed.results);
                                 removed.tx.send(removed.results).unwrap();
                             }
                         }
