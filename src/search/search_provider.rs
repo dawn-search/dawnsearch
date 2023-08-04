@@ -1,7 +1,5 @@
 use crate::search::page_source::ExtractedPage;
-use crate::search::vector::{
-    bytes_to_embedding, is_normalized, vector_embedding_to_bytes, Embedding, EM_LEN,
-};
+use crate::search::vector::{bytes_to_embedding, is_normalized, vector_embedding_to_bytes, EM_LEN};
 use crate::util::default_progress_bar;
 use anyhow::anyhow;
 use anyhow::bail;
@@ -167,7 +165,7 @@ impl SearchProvider {
     }
 
     pub fn get_embedding(&self, query: &str) -> anyhow::Result<Vec<f32>> {
-        Ok((self.model.encode(&[query])?[0].clone()))
+        Ok(self.model.encode(&[query])?[0].clone())
     }
 
     pub fn search(&self, query: &str) -> Result<SearchResult, anyhow::Error> {

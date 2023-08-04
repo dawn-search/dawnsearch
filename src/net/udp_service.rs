@@ -8,10 +8,15 @@ use rmp_serde::{Deserializer, Serializer};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::error::Error;
-use std::sync::mpsc::{Sender, SyncSender};
+use std::sync::mpsc::SyncSender;
 use std::time::{Duration, Instant};
 use tokio::net::UdpSocket;
 use tokio::sync::oneshot;
+
+#[cfg(feature = "upnp")]
+use network_interface::{NetworkInterface, NetworkInterfaceConfig};
+#[cfg(feature = "upnp")]
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
 
 pub const TRACKER_UDP_PORT: u32 = 7230;
 const UDP_PORT: u32 = 7231; // Looks like nobody is using this one yet.
@@ -78,6 +83,7 @@ impl UdpService {
     async fn run(&mut self) -> Result<(), Box<dyn Error>> {
         // let socket = find_port().await?;
         let socket = UdpSocket::bind("0.0.0.0:0").await?; // Random free port.
+        let listening_port = socket.local_addr()?.port();
         println!("Listening on UDP {}", socket.local_addr()?);
 
         let mut buf = [0u8; 2000];
@@ -174,6 +180,9 @@ impl UdpService {
                             }
                         }
                         UdpM::Announce {} => {
+                            #[cfg(feature = "upnp")]
+                            update_upnp(listening_port)?;
+
                             // Announce
                             let announce_message = UdpMessage::Announce {
                                 id: socket.local_addr()?.to_string(), // TEMP
@@ -188,6 +197,48 @@ impl UdpService {
                 }
             };
         }
-        Ok(())
     }
+}
+
+#[cfg(feature = "upnp")]
+fn update_upnp(listening_port: u16) -> anyhow::Result<()> {
+    let network_interfaces = NetworkInterface::show().unwrap();
+    for itf in network_interfaces.iter() {
+        for addr in &itf.addr {
+            match addr {
+                network_interface::Addr::V4(a) => {
+                    let search_options = igd::SearchOptions {
+                        bind_addr: SocketAddr::new(IpAddr::V4(a.ip), 0),
+                        broadcast_address: SocketAddr::new(
+                            IpAddr::V4(Ipv4Addr::new(239, 255, 255, 250)),
+                            1900,
+                        ),
+                        timeout: Some(Duration::from_secs(1)),
+                    };
+                    let mut local_addr = search_options.bind_addr.clone();
+                    local_addr.set_port(listening_port);
+
+                    if let Some(gateway) = igd::search_gateway(search_options).ok() {
+                        let ip = gateway.get_external_ip()?;
+                        if let Err(e) = gateway.add_port(
+                            igd::PortMappingProtocol::UDP,
+                            listening_port,
+                            SocketAddrV4::new(a.ip, listening_port),
+                            600,
+                            "Arecibo",
+                        ) {
+                            println!(
+                                "[UPnP] Could not add mapping from {} to {}: {}",
+                                ip, local_addr, e
+                            );
+                        } else {
+                            println!("[UPnP] Mapped {} to {}", ip, local_addr);
+                        }
+                    }
+                }
+                network_interface::Addr::V6(_) => {} // ipv6 doesn't support uPNP
+            };
+        }
+    }
+    Ok(())
 }

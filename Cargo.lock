@@ -71,8 +71,10 @@ dependencies = [
  "flate2",
  "html-escape",
  "html5ever",
+ "igd",
  "indicatif 0.17.5",
  "markup5ever_rcdom",
+ "network-interface",
  "num",
  "rand 0.8.5",
  "readability",
@@ -90,6 +92,18 @@ dependencies = [
  "urlencoding",
  "usearch",
  "whichlang",
+]
+
+[[package]]
+name = "attohttpc"
+version = "0.16.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fdb8867f378f33f78a811a8eb9bf108ad99430d7aad43315dd9319c827ef6247"
+dependencies = [
+ "http",
+ "log",
+ "url",
+ "wildmatch",
 ]
 
 [[package]]
@@ -1277,6 +1291,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "igd"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "556b5a75cd4adb7c4ea21c64af1c48cefb2ce7d43dc4352c720a1fe47c21f355"
+dependencies = [
+ "attohttpc",
+ "log",
+ "rand 0.8.5",
+ "url",
+ "xmltree",
+]
+
+[[package]]
 name = "indexmap"
 version = "1.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1543,6 +1570,18 @@ dependencies = [
  "num-integer",
  "num-traits",
  "rawpointer",
+]
+
+[[package]]
+name = "network-interface"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "296ae2183dab440e352740b1fcf0589d8058afa40bc29fd163227ddb01fbf539"
+dependencies = [
+ "cc",
+ "libc",
+ "thiserror",
+ "winapi",
 ]
 
 [[package]]
@@ -3055,6 +3094,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "213a57fbc76ff74e9dec77cf62e47fa4e4e01dec898dc09cc6873d992eed2ef9"
 
 [[package]]
+name = "wildmatch"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f44b95f62d34113cf558c93511ac93027e03e9c29a60dd0fd70e6e025c7270a"
+
+[[package]]
 name = "winapi"
 version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3236,6 +3281,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "xml-rs"
+version = "0.8.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47430998a7b5d499ccee752b41567bc3afc57e1327dc855b1a2aa44ce29b5fa1"
+
+[[package]]
 name = "xml5ever"
 version = "0.16.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3252,6 +3303,15 @@ name = "xmlparser"
 version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4d25c75bf9ea12c4040a97f829154768bbbce366287e2dc044af160cd79a13fd"
+
+[[package]]
+name = "xmltree"
+version = "0.10.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d7d8a75eaf6557bb84a65ace8609883db44a29951042ada9b393151532e41fcb"
+dependencies = [
+ "xml-rs",
+]
 
 [[package]]
 name = "zeroize"

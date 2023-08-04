@@ -5,7 +5,9 @@ edition = "2021"
 default-run = "arecibo"
 
 [features]
+default = ["upnp"]
 s3 = ["aws-config", "aws-sdk-s3"]
+upnp = ["igd", "network-interface"]
 
 [profile.release]
 lto = "thin"
@@ -41,3 +43,5 @@ serde = "1.0.180"
 rmp-serde = "1.1.2"
 rmp = "0.8.12"
 serde_bytes = "0.11.12"
+igd = { version = "0.12.1", optional = true }
+network-interface = { version = "1.0.1", optional = true }

@@ -21,7 +21,6 @@ impl SearchService {
             match SearchProvider::new(self.data_dir.clone(), self.shutdown_token.clone()) {
                 Err(e) => {
                     println!("Failed to load search provider {}", e);
-                    println!("{}", e.backtrace());
                     return;
                 }
                 Ok(s) => s,

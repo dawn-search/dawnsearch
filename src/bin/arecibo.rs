@@ -91,8 +91,8 @@ async fn main() -> Result<(), anyhow::Error> {
     let udp_tx2 = udp_tx.clone();
     tokio::spawn(async move {
         loop {
-            tokio::time::sleep(Duration::from_secs(5)).await;
             udp_tx2.send(UdpM::Announce {}).await.unwrap();
+            tokio::time::sleep(Duration::from_secs(60)).await;
         }
     });
 
