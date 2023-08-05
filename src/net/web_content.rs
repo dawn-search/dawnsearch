@@ -216,9 +216,14 @@ pub fn main_page() -> String {
     We then simply look for the documents which are closest to your query.
 </li>
 </ul>
+<h3>Privacy</h3>
+<p>
+This DawnSearch instance does not actively collect data on access, and does not store searches. However, some information may be temporarily stored in log files. Due to the way DawnSearch works, a processed form of your 
+seach query is sent to other instances. <b>Do not use DawnSearch to search for any sensitive information.</b>
+</p>
 <h3>Does this work as well as Google, Bing, Brave Search etc?</h3>
-<p>Currently, no. DawnSearch has just 0.1% of the data of one of a big dataset loaded. And this is still only a part of the internet. There is just so much information! Over the next coming months the index will expand, and we will have to discover
-what that does to the quality of the results! As DawnSearch is an experiment, we hope to find a lot of improvments still.
+<p>Currently, no. DawnSearch has just 0.1% of the data of one of a big dataset loaded. And this is still only a part of the internet. Over the next coming months the index will expand, and we will have to discover
+what that does to the quality of the results. As DawnSearch is an experiment, we hope to find a lot of improvments still.
 </p>
 <h3>AI and statistics</h3>
 <p>
@@ -227,6 +232,11 @@ For example, certain kinds of language use may not be detected as 'English' and 
 The AI model used, <a href="https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2">all-MiniLM-L6-v2</a>, may also prefer certain content over others. This is currently unknown.
 For example, it could decide it likes pages written by a male author more than written by a female. These biases may come from the training data itself, or it may happen because the AI
 is not human and thinks differently than we do.
+</p>
+<h3>Open Source / Free Software</h3>
+<p>
+The code for this instance is available on <a href="https://github.com/dawn-search/dawnsearch">GitHub</a> under an open source / free software license. In short, anyone is free to modify this software, with the important note that
+if they give other people access, they will also have to share their modifications with them.
 </p>
 </div>
 </div>
