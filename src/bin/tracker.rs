@@ -53,16 +53,18 @@ async fn main() -> anyhow::Result<()> {
                     .filter(|p| p.id != id && now() - p.last_seen < 10 * 60)
                     .map(|x| x.clone())
                     .collect();
-                let response = UdpMessage::Peers { peers: all };
-                send_buf.clear();
-                response
-                    .serialize(&mut Serializer::new(&mut send_buf))
-                    .unwrap();
-                println!("");
-                println!("Data: {} {:?}", send_buf.len(), send_buf);
-                // TODO: possible write amplification.
-                // TODO: split into multiple packets.
-                socket.send_to(&send_buf, addr).await?;
+                for chunk in all.chunks(25) {
+                    // We can probably fit 40 but let's be careful.
+                    let response = UdpMessage::Peers {
+                        peers: chunk.to_vec(),
+                    };
+                    send_buf.clear();
+                    response
+                        .serialize(&mut Serializer::new(&mut send_buf))
+                        .unwrap();
+                    // TODO: possible write amplification.
+                    socket.send_to(&send_buf, addr).await?;
+                }
             }
             _ => {}
         }
