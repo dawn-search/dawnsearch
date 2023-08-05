@@ -23,6 +23,7 @@ use crate::search::page_source::ExtractedPage;
 use crate::search::vector::{Embedding, ToFrom24};
 use crate::util::slice_up_to;
 use anyhow::bail;
+use rand::distributions::Alphanumeric;
 use rand::seq::SliceRandom;
 use rand::Rng;
 use rmp_serde::{Deserializer, Serializer};
@@ -118,6 +119,13 @@ impl UdpService {
 
         let mut known_peers: Vec<PeerInfo> = Vec::new();
         let mut active_searches: HashMap<u64, ActiveSearch> = HashMap::new();
+
+        let my_id: String = rand::thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(16)
+            .map(char::from)
+            .collect();
+        println!("[UDP] My ID is {}", my_id);
 
         loop {
             tokio::select! {
@@ -239,7 +247,7 @@ impl UdpService {
 
                             // Announce
                             let announce_message = UdpMessage::Announce {
-                                id: socket.local_addr()?.to_string(), // TEMP
+                                id: my_id.clone(),
                             };
                             send_buf.clear();
                             announce_message
