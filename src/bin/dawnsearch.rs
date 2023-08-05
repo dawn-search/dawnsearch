@@ -6,7 +6,9 @@ use dawnsearch::search::messages::SearchProviderMessage::*;
 use dawnsearch::search::search_service::SearchService;
 use std::env;
 use std::time::Duration;
-use tokio::signal;
+use tokio::signal::unix::signal;
+use tokio::signal::unix::SignalKind;
+use tokio::{select, signal};
 use tokio_util::sync::CancellationToken;
 
 #[tokio::main]
@@ -96,16 +98,14 @@ async fn main() -> Result<(), anyhow::Error> {
         }
     });
 
-    match signal::ctrl_c().await {
-        Ok(()) => {}
-        Err(err) => {
-            eprintln!("Unable to listen for shutdown signal: {}", err);
-            // we also shut down in case of error
-        }
-    }
+    let mut sigterm = signal(SignalKind::terminate()).unwrap();
+    let mut sigint = signal(SignalKind::interrupt()).unwrap();
+    select! {
+        _ = sigterm.recv() => println!("Recieved SIGTERM"),
+        _ = sigint.recv() => println!("Recieved SIGINT"),
+    };
 
-    println!("");
-    println!("Ctrl-C received, shutting down...");
+    println!("Shutting down...");
 
     original_shutdown_token.cancel();
     search_provider_tx.send(Shutdown)?;
