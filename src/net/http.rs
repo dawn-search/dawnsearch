@@ -1,3 +1,4 @@
+use crate::net::web_content::{main_page, results_page};
 use crate::search::messages::SearchProviderMessage;
 use crate::search::messages::SearchProviderMessage::*;
 use crate::search::search_provider::SearchResult;
@@ -6,26 +7,6 @@ use std::sync::mpsc::SyncSender;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
 use tokio::sync::oneshot;
-
-fn search_page(results: &str) -> String {
-    format!(
-        r###"
-<html>
-<head><title>DawnSearch</title></head>
-<body style="margin: 2em">
-<form method="get">
-<input name="q" id="searchbox">
-<input type="submit" value="Search">
-</form>
-{results:}
-<script>
-document.getElementById("searchbox").focus();
-</script>
-</body>
-</html>
-"###
-    )
-}
 
 fn format_results(result: &SearchResult) -> String {
     let mut r = String::new();
@@ -166,14 +147,15 @@ pub async fn http_server_loop(tx2: SyncSender<SearchProviderMessage>) -> anyhow:
                         .unwrap();
                     }
                     let result = orx.await.expect("Receiving results");
-                    format_results(&result)
+                    Some(format_results(&result))
                 }
-                None => String::new(),
+                None => None,
             };
-            socket
-                .write_all(search_page(&results).as_bytes())
-                .await
-                .unwrap();
+            if let Some(r) = results {
+                socket.write_all(results_page(&r).as_bytes()).await.unwrap();
+            } else {
+                socket.write_all(main_page().as_bytes()).await.unwrap();
+            }
         });
     }
 }
