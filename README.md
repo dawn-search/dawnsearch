@@ -1,8 +1,8 @@
 # DawnSearch
 
 [![Build Status](https://github.com/dawn-search/dawnsearch/workflows/Build/badge.svg?event=push)](https://github.com/dawn-search/dawnsearch/actions)
-![Crates.io](https://img.shields.io/crates/v/dawnsearch)
-![License](https://img.shields.io/crates/l/dawnsearch.svg)
+[![Crates.io](https://img.shields.io/crates/v/dawnsearch)](https://crates.io/crates/dawnsearch)
+[![License](https://img.shields.io/crates/l/dawnsearch.svg)](LICENSE)
 
 DawnSearch is an open source distributed web search engine that searches by meaning. It can index the [Common Crawl](https://commoncrawl.org/the-data/get-started/) data. It uses semantic search (searching on meaning), using [all-MiniLM-L6-v2](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2). It uses [USearch](https://github.com/unum-cloud/usearch) for vector search. DawnSearch is written in [Rust](https://www.rust-lang.org/). DawnSearch is licensed [AGPLv3.0+](LICENSE).
 
