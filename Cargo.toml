@@ -1,8 +1,12 @@
 [package]
 name = "dawnsearch"
+description = "An open source distributed web search engine that searches by meaning."
 version = "0.0.0"
 edition = "2021"
 default-run = "dawnsearch"
+homepage = "https://dawnsearch.org/"
+repository = "https://github.com/dawn-search/dawnsearch"
+license = "AGPL-3.0-or-later"
 
 [features]
 default = ["upnp"]
