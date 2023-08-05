@@ -104,7 +104,7 @@ pub fn page(title: &str, body: &str) -> String {
             width: 100%;
             border-bottom: 1px solid #c3c3c3;
             background-color: #f9f9f9;
-            column-gap: 2em;
+            column-gap: 0;
             padding-top: 1em;
             padding-left: 1em;         
         }}
@@ -161,7 +161,7 @@ pub fn page(title: &str, body: &str) -> String {
 }
 
 pub fn main_page() -> String {
-    let s = search_box();
+    let s = search_box("");
     page(
         "DawnSearch",
         &format!(
@@ -174,6 +174,9 @@ pub fn main_page() -> String {
 </p>
 </div>
 {s}
+<script>
+    document.getElementById("searchbox").focus();
+</script>   
 <div class="description">
 <h3>What is DawnSearch?</h3>
 <p>
@@ -213,10 +216,11 @@ is not human and thinks differently than we do.
     )
 }
 
-pub fn results_page(results: &str) -> String {
-    let s = search_box();
+pub fn results_page(search_query: &str, results: &str) -> String {
+    let s = search_box(search_query);
+    let title = format!("{} - DawnSearch", search_query);
     page(
-        "DawnSearch",
+        &title,
         &format!(
             r#"
 <div class="top-search">
@@ -225,26 +229,22 @@ pub fn results_page(results: &str) -> String {
 </div>
 <div class="results">
 {results:}
-</div>
-<script>
-document.getElementById("searchbox").focus();
-</script>    
+</div> 
     "#
         ),
     )
 }
 
-fn search_box() -> String {
+fn search_box(search_query: &str) -> String {
+    let s = html_escape::encode_double_quoted_attribute(search_query);
     format!(
         r#"
     <form method="get" class="search">
-    <input name="q" id="searchbox" class="search-input">
+    <input name="q" id="searchbox" class="search-input" value="{}">
     <input type="submit" value="Explore" class="search-button">
 </form>
-<script>
-document.getElementById("searchbox").focus();
-</script>
-"#
+"#,
+        s
     )
 }
 
@@ -257,14 +257,19 @@ pub fn format_results(result: &SearchResult) -> String {
         let title_encoded = html_escape::encode_text(&result.title);
         let s = slice_up_to(&result.text, 400);
         let text_encoded = html_escape::encode_text(s);
+        let distance = if result.distance < 0.0 {
+            0.0
+        } else {
+            result.distance
+        }; // Prevent -0.0 from showing up.
         r += &format!(
             r#"
-<div class="result-top">{:.2} <a href="?s={}">more like this</a> <i class="result-url">{}</i></div>
+<div class="result-top">{:.2} <a href="?s={}" title="Find pages like this one">explore</a> <i class="result-url">{}</i></div>
 <div class="result-title"><a href="{}">{}</a></div>
 <div class="result-text">
     {}...
 </div>"#,
-            result.distance, result.id, url_encoded, url_encoded_u, title_encoded, text_encoded,
+            distance, result.id, url_encoded, url_encoded_u, title_encoded, text_encoded,
         );
     }
     r

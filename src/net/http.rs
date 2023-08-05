@@ -110,16 +110,18 @@ pub async fn http_server_loop(tx2: SyncSender<SearchProviderMessage>) -> anyhow:
                 .await
                 .unwrap();
 
+            let mut query = String::new();
             let results = match kv {
                 Some((key, value)) => {
                     let (otx, orx) = oneshot::channel();
                     if key == "q" {
+                        query = urlencoding::decode(value)
+                            .expect("Url decode")
+                            .to_string()
+                            .replace("+", " ");
                         tx.send(TextSearch {
                             otx,
-                            query: urlencoding::decode(value)
-                                .expect("Url decode")
-                                .to_string()
-                                .replace("+", " "),
+                            query: query.clone(),
                         })
                         .unwrap();
                     } else if key == "s" {
@@ -135,7 +137,10 @@ pub async fn http_server_loop(tx2: SyncSender<SearchProviderMessage>) -> anyhow:
                 None => None,
             };
             if let Some(r) = results {
-                socket.write_all(results_page(&r).as_bytes()).await.unwrap();
+                socket
+                    .write_all(results_page(&query, &r).as_bytes())
+                    .await
+                    .unwrap();
             } else {
                 socket.write_all(main_page().as_bytes()).await.unwrap();
             }
