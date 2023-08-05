@@ -17,16 +17,45 @@
    along with DawnSearch.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+use anyhow::bail;
+use config::Config;
 use dawnsearch::net::udp_messages::{PeerInfo, UdpMessage};
 use dawnsearch::util::now;
 use rmp_serde::{Deserializer, Serializer};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::env;
 use tokio::net::UdpSocket;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let socket = UdpSocket::bind("0.0.0.0:7230").await?;
+    let args: Vec<String> = env::args().collect();
+
+    if args.len() > 2 {
+        bail!("Usage: dawntrack [config file]");
+    }
+
+    let config_file = if args.len() == 2 {
+        args[1].clone()
+    } else {
+        "DawnTrack.toml".to_string()
+    };
+
+    println!("Config file: {}", config_file);
+    let settings = Config::builder()
+        .add_source(config::File::with_name(&config_file))
+        // Add in settings from the environment (with a prefix of DAWNSEARCH)
+        // Eg.. `DAWNSEARCH_DEBUG=1 ./target/app` would set the `debug` key
+        .add_source(config::Environment::with_prefix("DAWNTRACK"))
+        .build()
+        .unwrap();
+
+    let udp_listen_address = settings
+        .get_string("udp_listen_address")
+        .unwrap_or("0.0.0.0:7230".to_string());
+    let external_address: Option<String> = settings.get_string("external_address").ok();
+
+    let socket = UdpSocket::bind(udp_listen_address).await?;
 
     let mut buf = [0u8; 2000];
     let mut send_buf: Vec<u8> = Vec::new();
@@ -34,12 +63,18 @@ async fn main() -> anyhow::Result<()> {
     // TODO: probably replace this by postgres.
     let mut peers: HashMap<String, PeerInfo> = HashMap::new();
 
-    while let Ok((len, addr)) = socket.recv_from(&mut buf).await {
+    while let Ok((len, mut addr)) = socket.recv_from(&mut buf).await {
         let mut de = Deserializer::new(&buf[..len]);
         let message: UdpMessage = Deserialize::deserialize(&mut de).unwrap();
         match message {
             UdpMessage::Announce { id } => {
                 println!("Announce ID {} addr {}", id, addr);
+                if let Some(x) = &external_address {
+                    if addr.ip().is_loopback() {
+                        addr.set_ip(x.parse().unwrap());
+                        println!("Address replaced by {}", addr);
+                    }
+                }
                 peers.insert(
                     id.clone(),
                     PeerInfo {

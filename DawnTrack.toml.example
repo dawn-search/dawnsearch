@@ -1,0 +1,8 @@
+# The address the UDP subsystem will listen on and send packets from.
+# 0.0.0.0 is 'all addresses' and :0 means 'a random port'.
+udp_listen_address = "0.0.0.0:7230"
+
+# This is used in case the tracker runs on the same host as an instance.
+# With this setting, the tracker will consider the instances that connect from loopback
+# addresses, like 127.0.0.1 to come from this address instead.
+# external_address = "dawnsearch.org"
