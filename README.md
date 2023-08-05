@@ -18,10 +18,36 @@ This will build and run DawnSearch on a recent Ubuntu, without GPU acceleration.
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
     pip3 install torch==2.0.0 --index-url https://download.pytorch.org/whl/cpu
-    export LIBTORCH_USE_PYTORCH=1 # You probably want to add this to your .bashrc at some point
+
+Now we need to make sure the build system can find PyTorch. We search for the package:
+
+    pip3 show torch
+
+This prints the following:
+
+    Name: torch
+    Version: 2.0.0
+    Summary: Tensors and Dynamic neural networks in Python with strong GPU acceleration
+    Home-page: https://pytorch.org/
+    Author: PyTorch Team
+    Author-email: packages@pytorch.org
+    License: BSD-3
+    Location: /home/ubuntu/.local/lib/python3.10/site-packages
+    Requires: filelock, jinja2, networkx, sympy, typing-extensions
+    Required-by: 
+
+Using the path from 'Location', put this in .bashrc. Note that you need to append '/torch'.
+
+    export LIBTORCH=/home/ubuntu/.local/lib/python3.10/site-packages/torch
+    export LD_LIBRARY_PATH=${LIBTORCH}/lib:$LD_LIBRARY_PATH
+
+We can now load the new environment variables and build:
+
+    source ~/.bashrc
+    mv DawnSearch.toml.example DawnSearch.toml
     cargo run --release
 
-If you want to upgrade to GPU acceleration do try this:
+If you want to upgrade to GPU acceleration try this:
 
     pip3 install torch==2.0.0
     cargo clean

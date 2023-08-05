@@ -47,10 +47,6 @@ Now run
     source ~/.bashrc
     cargo build --release
 
-# On Zram
-
-You may be tempted to use zram on a low ram machine. This sort-of works for building, though things will be really slow. However, don't use this for running DawnSearch, as the part of the index that stays in memory is not very compressible, and this will add latency to searches.
-
 # Nginx
 
     sudo apt install nginx
@@ -58,6 +54,8 @@ You may be tempted to use zram on a low ram machine. This sort-of works for buil
 Follow these steps to set up nginx as reverse proxy server: https://www.digitalocean.com/community/tutorials/how-to-configure-nginx-as-a-reverse-proxy-on-ubuntu-22-04
 
 Follow these steps to enable letsencrypt: https://www.nginx.com/blog/using-free-ssltls-certificates-from-lets-encrypt-with-nginx/
+
+# Running as a service
 
 Follow these steps on how to run as a service.
 
