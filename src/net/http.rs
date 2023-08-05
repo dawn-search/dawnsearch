@@ -1,4 +1,4 @@
-use crate::net::web_content::{main_page, results_page};
+use crate::net::web_content::{format_results, main_page, results_page};
 use crate::search::messages::SearchProviderMessage;
 use crate::search::messages::SearchProviderMessage::*;
 use crate::search::search_provider::SearchResult;
@@ -7,23 +7,6 @@ use std::sync::mpsc::SyncSender;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
 use tokio::sync::oneshot;
-
-fn format_results(result: &SearchResult) -> String {
-    let mut r = String::new();
-    r += &format!("<p>Searched {} pages</p>", result.pages_searched);
-    for result in &result.pages {
-        let url_encoded_u = html_escape::encode_double_quoted_attribute(&result.url);
-        let url_encoded = html_escape::encode_text(&result.url);
-        let title_encoded = html_escape::encode_text(&result.title);
-        let s = slice_up_to(&result.text, 400);
-        let text_encoded = html_escape::encode_text(s);
-        r += &format!(
-            r#"<p><a href="{}">{}</a><br>{:.2} <a href="?s={}">more like this</a> <i>{}</i></p><p>{}...</p>"#,
-            url_encoded_u, title_encoded, result.distance, result.id, url_encoded, text_encoded,
-        );
-    }
-    r
-}
 
 pub async fn http_server_loop(tx2: SyncSender<SearchProviderMessage>) -> anyhow::Result<()> {
     let addr = "0.0.0.0:8080";

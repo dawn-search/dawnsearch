@@ -1,3 +1,5 @@
+use crate::{search::search_provider::SearchResult, util::slice_up_to};
+
 /**
  * Who needs a templating engine when you've got format!?
  */
@@ -10,12 +12,12 @@ pub fn page(title: &str, body: &str) -> String {
 <title>{title}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-        * {{-webkit-font-smoothing: antialiased;}}
         body {{
             font-family: 'Open Sans Light','sans-serif';
             width: 100%;
             height: 100%;
             padding-bottom: 1em;
+            margin: 0;
         }}
         h1 {{
             font-size: min(13vw, 4em);
@@ -24,6 +26,18 @@ pub fn page(title: &str, body: &str) -> String {
             font-weight: 300;
             /* To get the light font weight to work on Chrome. */
             font-family: 'Open Sans Light','sans-serif';
+        }}
+        .tagline {{
+            margin-left: 2em;
+            margin-right: 2em;
+        }}
+        h1.small {{
+            font-size: 2em;
+            margin-top: 0.2em;
+        }}
+        h1.small > a {{
+            text-decoration: none;
+            color: #4f009f;
         }}
         h3 {{
             margin-block-end: 0.5em;
@@ -59,8 +73,10 @@ pub fn page(title: &str, body: &str) -> String {
         .search {{
             display: flex;
             width: 90%;
-            max-width: 700px;
+            max-width: 800px;
             gap: 0.5em;
+            margin-left: 2em;
+            margin-right: 2em;
         }}        
         .search > input {{
             font-size: 1.2em;
@@ -83,6 +99,57 @@ pub fn page(title: &str, body: &str) -> String {
             background-color: #f9f9f9;
             margin-top: 1.5em;
         }}
+        .top-search {{
+            display: flex;
+            width: 100%;
+            border-bottom: 1px solid #c3c3c3;
+            background-color: #f9f9f9;
+            column-gap: 2em;
+            padding-top: 1em;
+            padding-left: 1em;         
+        }}
+        .results {{
+            margin-left: 258px;
+            margin-right: 1.3em;
+            max-width: 800px;
+            font-size: 90%;
+            color: #141414;
+        }}
+        .result-url {{
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 760px;
+            display: block;
+        }}
+        .result-title {{
+            font-size: 1.3em;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 760px;
+            display: block;
+        }}
+        .result-top {{
+            color: #9f9ba5;
+        }}
+        .result-top > a {{
+            color: #9f9ba5;
+        }}
+        .result-text {{
+            margin-bottom: 1.4em;
+            margin-top: 0.4em;
+        }}
+        @media (max-width: 1060px) {{
+            .search {{
+                width: 95%;
+            }}
+            .top-search {{
+                flex-wrap: wrap;
+            }}
+            .results {{
+                margin-left: 1.3em;
+            }}
+        }}        
 </style>
 </head>
 <body>
@@ -103,7 +170,7 @@ pub fn main_page() -> String {
 <div class="index-header">
 <h1 class="title">DawnSearch</h1>
 <p class="tagline">
-    Open source distributed web search engine, that searches by meaning
+    The open source distributed web search engine that searches by meaning
 </p>
 </div>
 {s}
@@ -152,9 +219,13 @@ pub fn results_page(results: &str) -> String {
         "DawnSearch",
         &format!(
             r#"
- <h1>DawnSearch</h1>
+<div class="top-search">
+ <h1 class="small"><a href="/">DawnSearch</a></h1>
 {s}
+</div>
+<div class="results">
 {results:}
+</div>
 <script>
 document.getElementById("searchbox").focus();
 </script>    
@@ -175,4 +246,26 @@ document.getElementById("searchbox").focus();
 </script>
 "#
     )
+}
+
+pub fn format_results(result: &SearchResult) -> String {
+    let mut r = String::new();
+    r += &format!("<p>Searched {} pages</p>", result.pages_searched);
+    for result in &result.pages {
+        let url_encoded_u = html_escape::encode_double_quoted_attribute(&result.url);
+        let url_encoded = html_escape::encode_text(&result.url);
+        let title_encoded = html_escape::encode_text(&result.title);
+        let s = slice_up_to(&result.text, 400);
+        let text_encoded = html_escape::encode_text(s);
+        r += &format!(
+            r#"
+<div class="result-top">{:.2} <a href="?s={}">more like this</a> <i class="result-url">{}</i></div>
+<div class="result-title"><a href="{}">{}</a></div>
+<div class="result-text">
+    {}...
+</div>"#,
+            result.distance, result.id, url_encoded, url_encoded_u, title_encoded, text_encoded,
+        );
+    }
+    r
 }
