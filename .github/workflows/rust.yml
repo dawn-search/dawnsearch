@@ -1,0 +1,35 @@
+name: Rust
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Dependencies
+      run: sudo apt-get update && sudo apt-get install -y build-essential libssl-dev pkg-config python3-pip
+    - name: Install PyTorch (CPU version)
+      run: pip3 install torch==2.0.0 --index-url https://download.pytorch.org/whl/cpu
+    - name: Set env
+      run: echo "LIBTORCH_USE_PYTORCH=1" >> $GITHUB_ENV
+    - name: Build
+      run: cargo build --verbose
+    ## For local testing using 'act'
+    # - name: Install Rust
+    #   run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    # - name: Build
+    #   run: $HOME/.cargo/bin/cargo build --verbose
+    ## No tests yet!
+    # - name: Run tests
+    #   run: $HOME/.cargo/bin/cargo test --verbose
+    
