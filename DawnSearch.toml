@@ -1,0 +1,25 @@
+# Enable the web interface for searching.
+web = true
+
+# The address the web interface will listen on.
+# 0.0.0.0 is 'all addresses' and :0 means 'a random port'.
+web_listen_address = "0.0.0.0:8080"
+
+# Enable the UDP subsystem, for communication with other instances.
+udp = true
+
+# The address the UDP subsystem will listen on and send packets from.
+# 0.0.0.0 is 'all addresses' and :0 means 'a random port'.
+udp_listen_address = "0.0.0.0:7231"
+
+# Should we download crawl data from CommonCrawl and download it?
+index_cc = true
+
+# UPnP can be used to set up portforwarding from your router.
+upnp = false
+
+# Trackers used to announce ourselves to and to find other instances.
+trackers = ["tracker.dawnsearch.org:7230"]
+
+# Directory in which our database and index files will be stored.
+data_dir = "./data"

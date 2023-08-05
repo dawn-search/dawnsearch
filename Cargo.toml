@@ -46,3 +46,4 @@ igd = { version = "0.12.1", optional = true }
 network-interface = { version = "1.0.1", optional = true }
 smaz = "0.1.0"
 openssl = { version = "0.10", features = ["vendored"] }
+config = { version ="0.13.3", features = ["toml"] }

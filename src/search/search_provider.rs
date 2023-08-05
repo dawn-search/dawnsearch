@@ -75,13 +75,15 @@ impl SearchProvider {
         shutdown_token: CancellationToken,
     ) -> Result<SearchProvider, anyhow::Error> {
         let start = Instant::now();
-        print!("[Search Provider] Loading model...");
         let model = SentenceEmbeddingsBuilder::remote(SentenceEmbeddingsModelType::AllMiniLmL6V2)
             .with_device(tch::Device::Cpu)
             .create_model()?;
 
         let duration = start.elapsed();
-        println!(" {} ms", duration.as_millis());
+        println!(
+            "[Search Provider]  Loaded model in {} ms",
+            duration.as_millis()
+        );
 
         // Database
         let sqlite = rusqlite::Connection::open(Path::new(&data_dir).join("dawnsearch.sqlite"))?;

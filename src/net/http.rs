@@ -20,20 +20,20 @@
 use crate::net::web_content::{format_results, main_page, results_page};
 use crate::search::messages::SearchProviderMessage;
 use crate::search::messages::SearchProviderMessage::*;
-use crate::search::search_provider::SearchResult;
-use crate::util::slice_up_to;
 use std::sync::mpsc::SyncSender;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 
-pub async fn http_server_loop(tx2: SyncSender<SearchProviderMessage>) -> anyhow::Result<()> {
-    let addr = "0.0.0.0:8080";
+pub async fn http_server_loop(
+    tx2: SyncSender<SearchProviderMessage>,
+    web_listen_address: String,
+) -> anyhow::Result<()> {
     // Next up we create a TCP listener which will listen for incoming
     // connections. This TCP listener is bound to the address we determined
     // above and must be associated with an event loop.
-    let listener = TcpListener::bind(&addr).await.unwrap();
-    println!("Listening on: {}", addr);
+    let listener = TcpListener::bind(&web_listen_address).await.unwrap();
+    println!("[Web] Listening on: {}", &web_listen_address);
 
     loop {
         // Asynchronously wait for an inbound socket.

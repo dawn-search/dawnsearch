@@ -10,23 +10,30 @@ A public instance is available at [dawnsearch.org](https://dawnsearch.or).
 
 # Quick start
 
-These instructions assume you're running a recent Ubuntu.
+This will build and run DawnSearch on a recent Ubuntu, without GPU acceleration.
 
-Install Rust (if you don't have it already):
+    sudo apt-get update && sudo apt-get install -y build-essential libssl-dev pkg-config python3-pip
 
+    # Install rust if you don't have it already:
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
-Install the required packages.
+    pip3 install torch==2.0.0 --index-url https://download.pytorch.org/whl/cpu
+    export LIBTORCH_USE_PYTORCH=1 # You probably want to add this to your .bashrc at some point
+    cargo run --release
 
-    sudo apt update
-    sudo apt install build-essential libssl-dev pkg-config
+If you want to upgrade to GPU acceleration do try this:
 
-Next, install libtorch.
+    pip3 install torch==2.0.0
+    cargo clean
+    cargo run --release
 
-* To use DawnSearch with your CPU only, use pip to install pytorch and add "export LIBTORCH_USE_PYTORCH=1" to your .bashrc.
-* If you want CUDA support, follow the manual(!) installation steps from https://github.com/guillaume-be/rust-bert. If you don't use the manual steps CUDA may not work.
+Alternatively, follow the steps as documented for the [tch](https://github.com/LaurentMazare/tch-rs) crate.
 
-Feel free to open an issue if you encounter problems building DawnSearch!
+Feel free to open an issue if you encounter problems!
+
+# Configuration
+
+You can configure DawnSearch through [DawnSearch.toml](DawnSearch.toml) or through environment variables like DAWNSEARCH_INDEX_CC.
 
 # Contributing
 

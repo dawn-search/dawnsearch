@@ -1,5 +1,6 @@
 /target
 /store
+/data
 /perf.*
 /*.usearch
 /*.sqlite*

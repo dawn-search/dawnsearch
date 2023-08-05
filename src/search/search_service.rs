@@ -123,16 +123,17 @@ impl SearchService {
                 }
                 ExtractedPageMessage { page, from_network } => {
                     if search_provider.local_space_available() {
-                        match search_provider.insert(page.clone()) {
-                            Err(e) => println!("Failed to insert {}", e),
-                            _ => {}
+                        if let Err(e) = search_provider.insert(page.clone()) {
+                            eprintln!("Failed to insert {}", e);
                         }
                     }
                     if !from_network {
                         // Insert on the network.
                         let tx = self.udp_tx.clone();
                         tokio::spawn(async move {
-                            tx.send(UdpM::Insert { page }).await.unwrap();
+                            if let Err(e) = tx.send(UdpM::Insert { page }).await {
+                                eprintln!("Error occurred sending to the UDP system: {}", e)
+                            }
                         });
                     }
                 }

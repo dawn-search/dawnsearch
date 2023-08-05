@@ -40,12 +40,15 @@ const WARC_FILE_LIST: &str =
 pub async fn start_extraction_loop(
     sender: SyncSender<SearchProviderMessage>,
 ) -> anyhow::Result<()> {
-    let response = reqwest::blocking::get(WARC_FILE_LIST)?;
-    let file_list_reader = BufReader::new(MultiGzDecoder::new(response));
-    let files = file_list_reader
-        .lines()
-        .map(|x| x)
-        .collect::<Result<Vec<String>, _>>()?;
+    let files = tokio::task::spawn_blocking(move || {
+        let response = reqwest::blocking::get(WARC_FILE_LIST).unwrap();
+        let file_list_reader = BufReader::new(MultiGzDecoder::new(response));
+        file_list_reader
+            .lines()
+            .map(|x| x)
+            .collect::<Result<Vec<String>, _>>()
+    })
+    .await??;
 
     loop {
         let random_file: &str = &files[rand::thread_rng().gen_range(0..files.len())];
