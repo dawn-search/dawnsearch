@@ -171,7 +171,7 @@ impl SearchProvider {
     }
 
     pub fn local_space_available(&mut self) -> bool {
-        self.page_count().unwrap() < 500000
+        self.page_count().unwrap() < 1000000 // TODO: move to config
     }
 
     pub fn shutdown(&mut self) -> anyhow::Result<()> {
