@@ -9,10 +9,8 @@ TODO
 - License
 - Put source on Github
 - Create webpage
-- Demo instance
-- Instructions on how to run DawnSearch as a service
-- Clean up dependencies
 - Insert to close nodes
+- Config file to enable/disable parts, like web, index
 
 # Less-technical release
 
@@ -20,3 +18,5 @@ DawnSearch is ready for non-technical people to use.
 
 - Easy installation
 - Automatic updates
+- Install into browser (or create shortcut)
+- Set & forget
