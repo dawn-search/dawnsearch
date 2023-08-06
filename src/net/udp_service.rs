@@ -190,6 +190,9 @@ impl UdpService {
                             }
                         },
                         UdpMessage::Insert { url_smaz, title_smaz, text_smaz } => {
+                            if !self.config.accept_insert {
+                                continue;
+                            }
                             let url = String::from_utf8_lossy(&smaz::decompress(&url_smaz).unwrap()).to_string();
                             let title = String::from_utf8_lossy(&smaz::decompress(&title_smaz).unwrap()).to_string();
                             let text = String::from_utf8_lossy(&smaz::decompress(&text_smaz).unwrap()).to_string();
@@ -261,6 +264,7 @@ impl UdpService {
                             // Announce
                             let announce_message = UdpMessage::Announce {
                                 id: my_id.clone(),
+                                accept_insert: self.config.accept_insert,
                             };
                             send_buf.clear();
                             announce_message
@@ -286,7 +290,8 @@ impl UdpService {
                             println!("Insert message size {}", send_buf.len());
 
                             // For now, insert with three random peers.
-                            let peers: Vec<&PeerInfo> = { known_peers.choose_multiple(&mut rand::thread_rng(), 3).collect() } ;
+                            let peers_that_accept_insert = known_peers.iter().filter(|p| p.accept_insert).collect::<Vec<&PeerInfo>>();
+                            let peers: Vec<&PeerInfo> = { peers_that_accept_insert.choose_multiple(&mut rand::thread_rng(), 3).map(|x| *x).collect() } ;
                             for peer in peers {
                                 socket.send_to(&send_buf, &peer.addr).await?;
                             }

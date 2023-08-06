@@ -15,6 +15,9 @@ udp_listen_address = "0.0.0.0:7231"
 # Should we download crawl data from CommonCrawl and download it?
 index_cc = true
 
+# Do we accept page inserts from the network?
+accept_insert = false
+
 # UPnP can be used to set up portforwarding from your router.
 upnp = false
 

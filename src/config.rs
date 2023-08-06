@@ -8,6 +8,7 @@ pub struct Config {
 
     pub udp_enabled: bool,
     pub udp_listen_address: String,
+    pub accept_insert: bool,
     pub upnp_enabled: bool,
 
     pub trackers: Vec<String>,
@@ -35,6 +36,7 @@ impl Config {
             udp_listen_address: settings
                 .get_string("udp_listen_address")
                 .unwrap_or("0.0.0.0:8080".to_string()),
+            accept_insert: settings.get_bool("accept_insert").unwrap_or(false),
             upnp_enabled: settings.get_bool("upnp").unwrap_or(false),
 
             trackers: settings

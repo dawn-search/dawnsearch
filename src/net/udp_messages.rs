@@ -70,7 +70,11 @@ pub enum UdpMessage {
     // Tracker messages
     /** Let other peers know we're here. */
     #[serde(rename = "a")]
-    Announce { id: String },
+    Announce {
+        id: String,
+        #[serde(rename = "ai")]
+        accept_insert: bool,
+    },
     #[serde(rename = "p")]
     Peers {
         #[serde(rename = "p")]
@@ -83,4 +87,5 @@ pub struct PeerInfo {
     pub id: String,
     pub addr: String, // TODO: replace by binary value.
     pub last_seen: u64,
+    pub accept_insert: bool,
 }
