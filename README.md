@@ -16,7 +16,7 @@ DawnSearch currently functions as a distributed (semantic) vector search. When y
 Main items still to do:
 
 1. Better error handling. There still is a lot of .unwrap() in the code.
-2. Robustness agains malfunctioning or malicious instances.
+2. Robustness against malfunctioning or malicious instances.
 3. Packet encryption to prevent eavesdropping.
 4. Distribution of all the indexed pages to semantically close instances to increase search efficiency. Currently searches are sent to all instances.
 
@@ -63,6 +63,7 @@ Now, go to [http://localhost:8080](http://localhost:8080) to access your own Daw
 
 If you want to upgrade to GPU acceleration try this:
 
+    pip3 remove torch
     pip3 install torch==2.0.0
     cargo clean
     cargo run --release

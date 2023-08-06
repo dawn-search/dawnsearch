@@ -8,7 +8,7 @@ This document describes how to compile on arm64 linux, for example the AWS Gravi
 Log out & log in
 
     sudo apt update
-    sudo apt install build-essential pkg-config pip3
+    sudo apt install build-essential pkg-config python3-pip3
 
     pip3 install torch==2.0.0
 
