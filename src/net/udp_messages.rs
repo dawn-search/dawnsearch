@@ -85,7 +85,10 @@ pub enum UdpMessage {
 #[derive(Debug, PartialEq, Deserialize, Serialize, Clone)]
 pub struct PeerInfo {
     pub id: String,
+    #[serde(rename = "a")]
     pub addr: String, // TODO: replace by binary value.
+    #[serde(rename = "ls")]
     pub last_seen: u64,
+    #[serde(rename = "ai")]
     pub accept_insert: bool,
 }
