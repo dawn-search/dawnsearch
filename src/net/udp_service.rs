@@ -260,6 +260,8 @@ impl UdpService {
                         UdpMessage::Embedding { search_id, embedding } => {
                             if let Some(x) = active_get_embeddings.remove(&search_id) {
                                 x.tx.send(Vec::<f32>::from24(&embedding).unwrap().to_vec()).unwrap();
+                            } else {
+                                eprintln!("[UDP] Got embedding, but could not find active search {}", search_id);
                             }
                         }
                     }
@@ -377,6 +379,8 @@ impl UdpService {
                                 };
                                 get_embedding_message.serialize(&mut Serializer::new(&mut send_buf)).unwrap();
                                 socket.send_to(&send_buf, &instance.addr).await?;
+                            } else {
+                                eprintln!("[UDP] UdpM::GetEmbedding, instance not found {}", instance_id);
                             }
                         }
                     }

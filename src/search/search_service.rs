@@ -79,7 +79,7 @@ impl SearchService {
                             }
                         }
                     };
-                    otx.send(result).expect("Send response");
+                    self.search_remote(result, embedding, otx);
                 }
                 MoreLikeSearch {
                     otx,
