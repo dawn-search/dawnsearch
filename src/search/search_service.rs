@@ -54,18 +54,10 @@ impl SearchService {
             match message {
                 TextSearch { otx, query } => {
                     let embedding = search_provider.get_embedding(&query).unwrap();
-                    let result = match search_provider.search_embedding(&embedding) {
-                        Ok(r) => r,
-                        Err(e) => {
-                            println!("Failed to perform query: {}", e);
-                            SearchResult {
-                                pages: Vec::new(),
-                                pages_searched: 0,
-                                servers_contacted: 0,
-                            }
-                        }
-                    };
-                    self.search_remote(result, embedding, otx);
+                    // Send it back to ourselves as a normal embedding search.
+                    self.search_tx
+                        .send(SearchProviderMessage::EmbeddingSearch { otx, embedding })
+                        .unwrap();
                 }
                 EmbeddingSearch { otx, embedding } => {
                     let result = match search_provider.search_embedding(&embedding) {
@@ -87,18 +79,12 @@ impl SearchService {
                     page_id,
                 } => {
                     if instance_id == "" {
-                        let result = match search_provider.search_like(page_id) {
-                            Ok(r) => r,
-                            Err(e) => {
-                                println!("Failed to perform query: {}", e);
-                                SearchResult {
-                                    pages: Vec::new(),
-                                    pages_searched: 0,
-                                    servers_contacted: 0,
-                                }
-                            }
-                        };
-                        otx.send(result).expect("Send response");
+                        if let Ok(embedding) = search_provider.embedding_for_page(page_id) {
+                            // Send it back to ourselves as a normal embedding search.
+                            self.search_tx
+                                .send(SearchProviderMessage::EmbeddingSearch { otx, embedding })
+                                .unwrap();
+                        }
                     } else {
                         // Reference to a peer, ask it for the embedding so we can search for it.
                         let (otxx, orxx) = oneshot::channel();
