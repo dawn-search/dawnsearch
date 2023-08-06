@@ -2,6 +2,7 @@
 
 [![Build Status](https://github.com/dawn-search/dawnsearch/workflows/Build/badge.svg?event=push)](https://github.com/dawn-search/dawnsearch/actions)
 [![Crates.io](https://img.shields.io/crates/v/dawnsearch)](https://crates.io/crates/dawnsearch)
+[![Crates.io](https://img.shields.io/crates/d/dawnsearch)](https://crates.io/crates/dawnsearch)
 [![License](https://img.shields.io/crates/l/dawnsearch.svg)](LICENSE)
 
 DawnSearch is an open source distributed web search engine that searches by meaning. It can index the [Common Crawl](https://commoncrawl.org/the-data/get-started/) data. It uses semantic search (searching on meaning), using [all-MiniLM-L6-v2](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2). It uses [USearch](https://github.com/unum-cloud/usearch) for vector search. DawnSearch is written in [Rust](https://www.rust-lang.org/). DawnSearch is licensed [AGPLv3.0+](LICENSE).
@@ -10,7 +11,7 @@ A public instance is available at [dawnsearch.org](https://dawnsearch.or).
 
 # Quick start
 
-This will build and run DawnSearch on a recent Ubuntu, without GPU acceleration.
+This will build and run an 'access terminal' DawnSearch instance on a recent Ubuntu, without GPU acceleration. See [Modes](Modes.md) for examples of other configurations.
 
     sudo apt-get update && sudo apt-get install -y build-essential libssl-dev pkg-config python3-pip
 
@@ -47,6 +48,8 @@ We can now load the new environment variables and build:
     mv DawnSearch.toml.example DawnSearch.toml
     cargo run --release
 
+Now, go to [http://localhost:8080](http://localhost:8080) to access your own DawnSearch instance. You will be able to perform searches, but you will not contribute to the network yet. Take a look at [Modes](Modes.md) to see how you can do so.
+
 If you want to upgrade to GPU acceleration try this:
 
     pip3 install torch==2.0.0
@@ -54,6 +57,8 @@ If you want to upgrade to GPU acceleration try this:
     cargo run --release
 
 Alternatively, follow the steps as documented for the [tch](https://github.com/LaurentMazare/tch-rs) crate.
+
+Note that on an M1/M2 Mac, 'cargo install' does NOT work. 'cargo build' does though!
 
 Feel free to open an issue if you encounter problems!
 

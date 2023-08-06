@@ -13,7 +13,7 @@ udp = true
 udp_listen_address = "0.0.0.0:7231"
 
 # Should we download crawl data from CommonCrawl and download it?
-index_cc = true
+index_cc = false
 
 # Do we accept page inserts from the network?
 accept_insert = false
