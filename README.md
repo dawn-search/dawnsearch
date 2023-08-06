@@ -5,9 +5,20 @@
 [![Crates.io](https://img.shields.io/crates/d/dawnsearch)](https://crates.io/crates/dawnsearch)
 [![License](https://img.shields.io/crates/l/dawnsearch.svg)](LICENSE)
 
-DawnSearch is an open source distributed web search engine that searches by meaning. It can index the [Common Crawl](https://commoncrawl.org/the-data/get-started/) data. It uses semantic search (searching on meaning), using [all-MiniLM-L6-v2](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2). It uses [USearch](https://github.com/unum-cloud/usearch) for vector search. DawnSearch is written in [Rust](https://www.rust-lang.org/). DawnSearch is licensed [AGPLv3.0+](LICENSE).
+DawnSearch is an open source distributed web search engine that searches by meaning. It can index the [Common Crawl](https://commoncrawl.org/the-data/get-started/) data. It uses semantic search (searching on meaning), using [all-MiniLM-L6-v2](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2). It uses [USearch](https://github.com/unum-cloud/usearch) for vector search. DawnSearch is written in [Rust](https://www.rust-lang.org/).
 
-A public instance is available at [dawnsearch.org](https://dawnsearch.or).
+A public instance is available at [dawnsearch.org](https://dawnsearch.org).
+
+### Project Status
+
+DawnSearch currently functions as a distributed (semantic) vector search. When you start an instance, it will register with the tracker. The instance can then participate in the network by searching. Optionally, it can index the common crawl dataset and answer queries.
+
+Main items still to do:
+
+1. Better error handling. There still is a lot of .unwrap() in the code.
+2. Robustness agains malfunctioning or malicious instances.
+3. Packet encryption to prevent eavesdropping.
+4. Distribution of all the indexed pages to semantically close instances to increase search efficiency. Currently searches are sent to all instances.
 
 # Quick start
 
@@ -68,7 +79,7 @@ You can configure DawnSearch through [DawnSearch.toml](DawnSearch.toml) or throu
 
 # Contributing
 
-Please open issues, or create pull requests. Note that DawnSearch is licensed AGPLv3.0+ or later, which is slightly unusual for a Rust project.
+Please open issues, or create pull requests! Please open an issue before you start working on a big enhancement or refactor.
 
 # See also
 

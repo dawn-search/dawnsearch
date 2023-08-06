@@ -1,3 +1,5 @@
+# Building
+
 This document describes how to compile on arm64 linux, for example the AWS Graviton instances.
 4GB of ram needed, for torch-sys, so on AWS that is a t4g.medium.
 
