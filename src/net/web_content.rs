@@ -129,6 +129,16 @@ pub fn page(title: &str, body: &str) -> String {
             padding-top: 1em;
             padding-left: 1em;         
         }}
+        .result.exploring {{
+            background-color: #f9f9f9;
+            padding: 1em;
+            border-radius: 8px;
+            border: solid 1px #d5d5d5;
+            margin-left: -1em;
+            margin-right: -1em;
+            padding-bottom: 0;
+            margin-bottom: 2em;            
+        }}
         .results {{
             margin-left: 258px;
             margin-right: 1.3em;
@@ -153,13 +163,34 @@ pub fn page(title: &str, body: &str) -> String {
         .result-top {{
             color: #9f9ba5;
         }}
-        .result-top > a {{
-            color: #9f9ba5;
+        .currently-exploring {{
+            display: none;
+            color: 4f009f;
+        }}
+        .result.exploring > .result-top {{
+            display: none;
+        }}
+        .result.exploring > .currently-exploring {{
+            display: block;
         }}
         .result-text {{
             margin-bottom: 1.4em;
             margin-top: 0.4em;
         }}
+        .result-explore {{
+            background-color: #c1c1c1;
+            color: white;
+            border-radius: 3px;
+            padding: 2px;
+            padding-left: 5px;
+            padding-right: 5px;
+            font-size: 90%;
+            text-decoration: none;
+        }}
+        .result-explore:hover {{
+            background-color: #8350ff;
+        }}
+
         @media (max-width: 1060px) {{
             .search {{
                 width: 95%;
@@ -299,16 +330,24 @@ pub fn format_results(result: &SearchResult, elapsed: Duration) -> String {
             result.distance
         }; // Prevent -0.0 from showing up.
         let explore = format!(
-            r#"<a href="?s={}:{}" title="Find pages like this one">explore</a>"#,
+            r#"<a href="?s={}:{}" title="Find pages like this one" class="result-explore">explore</a>"#,
             result.instance_id, result.page_id
         );
+        let exploring = if result.distance < 0.001 {
+            "exploring"
+        } else {
+            ""
+        };
         r += &format!(
             r#"
+<div class="result {exploring}"><div class="currently-exploring">Exploring</div>
 <div class="result-top">{:.2} {explore} <i class="result-url">{}</i></div>
 <div class="result-title"><a href="{}">{}</a></div>
 <div class="result-text">
     {}...
-</div>"#,
+</div>
+</div>
+"#,
             distance, url_encoded, url_encoded_u, title_encoded, text_encoded,
         );
     }
