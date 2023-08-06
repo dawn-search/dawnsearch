@@ -298,14 +298,22 @@ pub fn format_results(result: &SearchResult, elapsed: Duration) -> String {
         } else {
             result.distance
         }; // Prevent -0.0 from showing up.
+        let explore = if result.id > 0 {
+            format!(
+                r#"<a href="?s={}" title="Find pages like this one">explore</a>"#,
+                result.id
+            )
+        } else {
+            String::new()
+        };
         r += &format!(
             r#"
-<div class="result-top">{:.2} <a href="?s={}" title="Find pages like this one">explore</a> <i class="result-url">{}</i></div>
+<div class="result-top">{:.2} {explore} <i class="result-url">{}</i></div>
 <div class="result-title"><a href="{}">{}</a></div>
 <div class="result-text">
     {}...
 </div>"#,
-            distance, result.id, url_encoded, url_encoded_u, title_encoded, text_encoded,
+            distance, url_encoded, url_encoded_u, title_encoded, text_encoded,
         );
     }
     r

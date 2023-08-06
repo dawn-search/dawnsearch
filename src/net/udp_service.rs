@@ -161,7 +161,6 @@ impl UdpService {
                             }
 
                             let em = Embedding::<f32>::from24(embedding.try_into().unwrap()).unwrap();
-                            println!("Received embedding {:?}", em);
                             // Send search message to searchprovider.
                             let (otx, orx) = oneshot::channel();
                             self.search_provider_tx
@@ -186,7 +185,6 @@ impl UdpService {
                                     title: page.title,
                                     text: slice_up_to(&page.text, 500).to_string(),
                                 };
-                                println!("Sending {:?}", m);
                                 send_buf.clear();
                                 m.serialize(&mut Serializer::new(&mut send_buf)).unwrap();
                                 socket.send_to(&send_buf, &addr).await?;

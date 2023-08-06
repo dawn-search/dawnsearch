@@ -117,7 +117,7 @@ impl SearchService {
 
                         otx.send(SearchResult {
                             pages: real_results,
-                            pages_searched: total_pages,
+                            pages_searched: total_pages + r.pages_searched,
                             servers_contacted: r.servers_contacted,
                         })
                         .expect("Send response");
