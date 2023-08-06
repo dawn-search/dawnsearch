@@ -94,7 +94,10 @@ async fn extract_file(
                 let mut page_source = PageSource::read_warc_gz(response);
 
                 while let Some(page) = page_source.next()? {
-                    sender.send(SearchProviderMessage::ExtractedPageMessage { page })?;
+                    sender.send(SearchProviderMessage::ExtractedPageMessage {
+                        page,
+                        from_network: false,
+                    })?;
                 }
                 Ok(())
             })
