@@ -17,6 +17,7 @@
    along with DawnSearch.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+use crate::config::Config;
 use crate::net::web_content::{format_results, main_page, results_page};
 use crate::search::messages::SearchProviderMessage;
 use crate::search::messages::SearchProviderMessage::*;
@@ -27,13 +28,13 @@ use tokio::sync::oneshot;
 
 pub async fn http_server_loop(
     tx2: SyncSender<SearchProviderMessage>,
-    web_listen_address: String,
+    config: Config,
 ) -> anyhow::Result<()> {
     // Next up we create a TCP listener which will listen for incoming
     // connections. This TCP listener is bound to the address we determined
     // above and must be associated with an event loop.
-    let listener = TcpListener::bind(&web_listen_address).await.unwrap();
-    println!("[Web] Listening on: {}", &web_listen_address);
+    let listener = TcpListener::bind(&config.web_listen_address).await.unwrap();
+    println!("[Web] Listening on: {}", &config.web_listen_address);
 
     loop {
         // Asynchronously wait for an inbound socket.

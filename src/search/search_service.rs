@@ -17,6 +17,7 @@
    along with DawnSearch.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+use crate::config::Config;
 use crate::net::udp_service::UdpM;
 use crate::search::best_results::BestResults;
 use crate::search::best_results::NodeReference;
@@ -30,7 +31,7 @@ use tokio::sync::oneshot;
 use tokio_util::sync::CancellationToken;
 
 pub struct SearchService {
-    pub data_dir: String,
+    pub config: Config,
     pub shutdown_token: CancellationToken,
     pub search_provider_receiver: Receiver<SearchProviderMessage>,
     pub udp_tx: tokio::sync::mpsc::Sender<UdpM>,
@@ -39,7 +40,7 @@ pub struct SearchService {
 impl SearchService {
     pub fn start(&mut self) {
         let mut search_provider =
-            match SearchProvider::new(self.data_dir.clone(), self.shutdown_token.clone()) {
+            match SearchProvider::new(self.config.data_dir.clone(), self.shutdown_token.clone()) {
                 Err(e) => {
                     println!("Failed to load search provider {}", e);
                     return;

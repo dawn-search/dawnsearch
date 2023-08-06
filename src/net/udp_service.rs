@@ -17,6 +17,7 @@
    along with DawnSearch.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+use crate::config::Config;
 use crate::net::udp_messages::{PeerInfo, UdpMessage};
 use crate::search::messages::SearchProviderMessage;
 use crate::search::page_source::ExtractedPage;
@@ -99,9 +100,7 @@ pub enum UdpM {
 pub struct UdpService {
     pub search_provider_tx: SyncSender<SearchProviderMessage>,
     pub udp_rx: tokio::sync::mpsc::Receiver<UdpM>,
-    pub upnp_enabled: bool,
-    pub trackers: Vec<String>,
-    pub udp_listen_address: String,
+    pub config: Config,
 }
 
 impl UdpService {
@@ -111,7 +110,7 @@ impl UdpService {
 
     async fn run(&mut self) -> Result<(), Box<dyn Error>> {
         // let socket = find_port().await?;
-        let socket = UdpSocket::bind(&self.udp_listen_address).await?; // Random free port.
+        let socket = UdpSocket::bind(&self.config.udp_listen_address).await?; // Random free port.
         let listening_port = socket.local_addr()?.port();
         println!("[UDP] Listening on {}", socket.local_addr()?);
 
@@ -255,7 +254,7 @@ impl UdpService {
                         }
                         UdpM::Announce {} => {
                             #[cfg(feature = "upnp")]
-                            if self.upnp_enabled {
+                            if self.config.upnp_enabled {
                                 update_upnp(listening_port)?;
                             }
 
@@ -267,7 +266,7 @@ impl UdpService {
                             announce_message
                                 .serialize(&mut Serializer::new(&mut send_buf))
                                 .unwrap();
-                            for tracker in &self.trackers {
+                            for tracker in &self.config.trackers {
                                 println!("Sending Announce to {}", tracker);
                                 if let Err(e) = socket.send_to(&send_buf, tracker).await {
                                     eprintln!("Failed to send announce to {}: {}", tracker, e);

@@ -17,6 +17,7 @@
    along with DawnSearch.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+pub mod config;
 pub mod index;
 pub mod net;
 pub mod search;

@@ -18,7 +18,7 @@
 */
 
 use anyhow::bail;
-use config::Config;
+use dawnsearch::config::Config;
 use dawnsearch::index::extraction_loop::start_extraction_loop;
 use dawnsearch::net::http::http_server_loop;
 use dawnsearch::net::udp_service::{UdpM, UdpService};
@@ -46,42 +46,10 @@ async fn main() -> Result<(), anyhow::Error> {
         "DawnSearch.toml".to_string()
     };
 
-    println!("Config file: {}", config_file);
-    let settings = Config::builder()
-        .add_source(config::File::with_name(&config_file))
-        // Add in settings from the environment (with a prefix of DAWNSEARCH)
-        // Eg.. `DAWNSEARCH_DEBUG=1 ./target/app` would set the `debug` key
-        .add_source(config::Environment::with_prefix("DAWNSEARCH"))
-        .build()
-        .unwrap();
+    let config = Config::load(&config_file);
+    config.print();
 
-    let index_cc_enabled = settings.get_bool("index_cc").unwrap_or(false);
-    let web_enabled = settings.get_bool("web").unwrap_or(true);
-    let web_listen_address = settings
-        .get_string("web_listen_address")
-        .unwrap_or("0.0.0.0:8080".to_string());
-    let udp_enabled = settings.get_bool("udp").unwrap_or(true);
-    let udp_listen_address = settings
-        .get_string("udp_listen_address")
-        .unwrap_or("0.0.0.0:8080".to_string());
-    let upnp_enabled = settings.get_bool("upnp").unwrap_or(false);
-
-    let trackers: Vec<String> = settings
-        .get_array("trackers")
-        .map(|a| a.iter().map(|v| v.clone().into_string().unwrap()).collect())
-        .unwrap_or_default();
-    let data_dir = settings.get_string("data_dir").unwrap_or(".".to_string());
-
-    println!("Indexing Common Crawl enabled: {}", index_cc_enabled);
-    println!("Web enabled: {}", web_enabled);
-    println!("Web listen address: {}", web_listen_address);
-    println!("UDP enabled: {}", udp_enabled);
-    println!("UDP listen address: {}", udp_listen_address);
-    println!("UPnP enabled: {}", upnp_enabled);
-    println!("Trackers: {:?}", trackers);
-    println!("Data directory: {}", data_dir);
-
-    fs::create_dir_all(&data_dir)?;
+    fs::create_dir_all(&config.data_dir)?;
 
     let original_shutdown_token = CancellationToken::new();
 
@@ -93,9 +61,10 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let search_provider_tx = search_provider_sender.clone();
     let udp_tx2 = udp_tx.clone();
+    let config2 = config.clone();
     tokio::task::spawn_blocking(move || {
         SearchService {
-            data_dir,
+            config: config2,
             shutdown_token,
             search_provider_receiver,
             udp_tx: udp_tx2,
@@ -113,27 +82,26 @@ async fn main() -> Result<(), anyhow::Error> {
         }
     });
 
-    if index_cc_enabled {
+    if config.index_cc_enabled {
         let tx2 = search_provider_sender.clone();
         tokio::spawn(async move {
             start_extraction_loop(tx2).await.unwrap();
         });
     }
 
-    if web_enabled {
+    let config2 = config.clone();
+    if config.web_enabled {
         let tx2 = search_provider_sender.clone();
         tokio::spawn(async move {
-            http_server_loop(tx2, web_listen_address).await.unwrap();
+            http_server_loop(tx2, config2).await.unwrap();
         });
     }
 
-    if udp_enabled {
+    if config.udp_enabled {
         let udp_service = UdpService {
             search_provider_tx: search_provider_sender.clone(),
             udp_rx,
-            upnp_enabled,
-            trackers,
-            udp_listen_address,
+            config,
         };
         tokio::spawn(udp_service.start());
 
