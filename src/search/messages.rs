@@ -20,6 +20,7 @@
 use super::page_source::ExtractedPage;
 use super::search_provider::{SearchResult, SearchStats};
 
+#[derive(Debug)]
 pub enum SearchProviderMessage {
     TextSearch {
         otx: tokio::sync::oneshot::Sender<SearchResult>,

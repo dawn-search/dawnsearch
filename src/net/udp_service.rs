@@ -103,6 +103,7 @@ pub struct NetworkSearchResult {
     pub pages_searched: usize,
 }
 
+#[derive(Debug)]
 pub enum UdpM {
     Search {
         embedding: Vec<f32>,
@@ -164,6 +165,9 @@ impl UdpService {
                             continue;
                         }
                     };
+                    if self.config.debug > 0 {
+                        println!("[UDP] Received packet {:?}", message);
+                    }
 
                     match message {
                         UdpMessage::Search { search_id, distance_limit, embedding } => {
@@ -183,6 +187,9 @@ impl UdpService {
                                 })
                                 .unwrap();
                             let result = orx.await.expect("Receiving results");
+                            if self.config.debug > 0 {
+                                println!("[UDP] Search: got back from search_provider {:?}", result);
+                            }
                             for page in result.pages {
                                 if let Some(d) = distance_limit {
                                     if page.distance >= d {
@@ -254,6 +261,9 @@ impl UdpService {
                                 otx,
                             }).unwrap();
                             let em: Vec<f32> = orx.await.unwrap();
+                            if self.config.debug > 0 {
+                                println!("[UDP] GetEmbedding: got a vector of length {} back from Search", em.len());
+                            }
                             let m = UdpMessage::Embedding {
                                 search_id,
                                 embedding: em.to24().as_slice().try_into().unwrap(),
@@ -274,6 +284,13 @@ impl UdpService {
                 v = self.udp_rx.recv() => {
                     // Message to the UDP service
                     let m = v.unwrap();
+                    if self.config.debug > 0 {
+                        match m {
+                            UdpM::Tick {} => {},
+                            _ => {println!("[UDP] Received message {:?}", m);}
+                        }
+                    }
+
                     match m {
                         UdpM::Search { embedding, distance_limit, tx } => {
                             let search_id: u64 = rand::thread_rng().gen();
@@ -294,7 +311,7 @@ impl UdpService {
 
                             // Let's fire this one off to our peers.
                             for peer in &known_peers {
-                                println!("Sending search to peer {}", peer.instance_id);
+                                println!("[UDP] Sending search to peer {}", peer.instance_id);
 
                                 active_searches.get_mut(&search_id).unwrap().servers_contacted += 1;
                                 // TODO: this is a bit optmistic, we should wait until we get a response from the peer.
@@ -333,6 +350,9 @@ impl UdpService {
                             let (otx, orx) = oneshot::channel();
                             self.search_provider_tx.send(SearchProviderMessage::Stats { otx }).unwrap();
                             let stats = orx.await.unwrap();
+                            if self.config.debug > 0 {
+                                println!("[UDP] Announce: got back from search_provider {:?}", stats);
+                            }
 
                             // Announce
                             let announce_message = UdpMessage::Announce {
@@ -345,7 +365,7 @@ impl UdpService {
                                 .serialize(&mut Serializer::new(&mut send_buf))
                                 .unwrap();
                             for tracker in &self.config.trackers {
-                                println!("Sending Announce to {}", tracker);
+                                println!("[UDP] Sending Announce to {}", tracker);
                                 if let Err(e) = socket.send_to(&send_buf, tracker).await {
                                     eprintln!("Failed to send announce to {}: {}", tracker, e);
                                 }

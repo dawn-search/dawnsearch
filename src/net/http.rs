@@ -98,6 +98,10 @@ pub async fn http_server_loop(
                 None
             };
 
+            if config.debug > 0 {
+                println!("[HTTP] Request for {}", path);
+            }
+
             if path == "/robots.txt" {
                 socket
                     .write_all(
@@ -152,6 +156,9 @@ pub async fn http_server_loop(
                         .unwrap();
                     }
                     let result = orx.await.expect("Receiving results");
+                    if config.debug > 0 {
+                        println!("[HTTP] Got back {} results", result.pages.len());
+                    }
                     Some(format_results(&result, start.elapsed()))
                 }
                 None => None,

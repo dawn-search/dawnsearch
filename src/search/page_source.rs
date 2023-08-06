@@ -41,7 +41,7 @@ struct RecordOwned {
     body: String,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ExtractedPage {
     pub url: String,
     pub title: String,

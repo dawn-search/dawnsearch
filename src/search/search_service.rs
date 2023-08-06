@@ -49,8 +49,11 @@ impl SearchService {
                 }
                 Ok(s) => s,
             };
-        println!("SearchProvider ready");
+        println!("[Search] ready");
         while let Ok(message) = self.search_rx.recv() {
+            if self.config.debug > 0 {
+                println!("[Search] Received message {:?}", message);
+            }
             match message {
                 TextSearch { otx, query } => {
                     let embedding = search_provider.get_embedding(&query).unwrap();
@@ -106,6 +109,7 @@ impl SearchService {
                         let (otxx, orxx) = oneshot::channel();
                         let search_tx2 = self.search_tx.clone();
                         let udp_tx2 = self.udp_tx.clone();
+                        let debug = self.config.debug;
                         tokio::spawn(async move {
                             udp_tx2
                                 .send(UdpM::GetEmbedding {
@@ -116,6 +120,12 @@ impl SearchService {
                                 .await
                                 .unwrap();
                             let embedding = orxx.await.unwrap();
+                            if debug > 0 {
+                                println!(
+                                    "[Search] Announce: got a vector of length {} back from UDP",
+                                    embedding.len()
+                                );
+                            }
                             // Pass it back into ourselves as a normal query.
                             search_tx2
                                 .send(SearchProviderMessage::EmbeddingSearch { otx, embedding })
@@ -166,6 +176,10 @@ impl SearchService {
     ) {
         let mut all_found_pages = result.pages;
 
+        if self.config.debug > 0 {
+            println!("[Search] got {} local results", all_found_pages.len());
+        }
+
         // Store them in a BestResults
         let mut best = BestResults::new(20);
         for (id, page) in all_found_pages.iter().enumerate() {
@@ -178,6 +192,7 @@ impl SearchService {
         let worst_distance = best.worst_distance();
 
         let udp_tx2 = self.udp_tx.clone();
+        let debug = self.config.debug;
         tokio::spawn(async move {
             // Also fire it off to the network.
             let (otxx, orxx) = oneshot::channel();
@@ -190,6 +205,12 @@ impl SearchService {
                 .await
                 .unwrap();
             let r = orxx.await.unwrap();
+            if debug > 0 {
+                println!(
+                    "[Search] remote: got {} search results from UDP",
+                    r.results.len()
+                );
+            }
 
             // Add our own results to this.
             let total_pages = result.pages_searched;

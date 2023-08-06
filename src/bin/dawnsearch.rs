@@ -125,7 +125,10 @@ async fn main() -> Result<(), anyhow::Error> {
         // Discard messages.
         tokio::spawn(async move {
             loop {
-                udp_rx.recv().await.unwrap();
+                let discarded = udp_rx.recv().await.unwrap();
+                if config.debug > 0 {
+                    println!("[Main] Discarding packet for UDP system {:?}", discarded);
+                }
             }
         });
     }

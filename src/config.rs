@@ -32,6 +32,8 @@ pub struct Config {
 
     pub trackers: Vec<String>,
     pub data_dir: String,
+
+    pub debug: usize,
 }
 
 impl Config {
@@ -63,6 +65,7 @@ impl Config {
                 .map(|a| a.iter().map(|v| v.clone().into_string().unwrap()).collect())
                 .unwrap_or_default(),
             data_dir: settings.get_string("data_dir").unwrap_or(".".to_string()),
+            debug: settings.get_int("debug").unwrap_or(0) as usize,
         }
     }
 
@@ -77,6 +80,7 @@ impl Config {
         println!("UPnP enabled: {}", self.upnp_enabled);
         println!("Trackers: {:?}", self.trackers);
         println!("Data directory: {}", self.data_dir);
+        println!("Debug level: {}", self.debug);
         println!("==========================================================");
     }
 }
