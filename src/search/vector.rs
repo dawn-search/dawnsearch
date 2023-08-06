@@ -48,13 +48,13 @@ impl ToI16 for Embedding<f32> {
 const I24_MAX: u32 = 0x7FFFFF;
 
 pub trait ToFrom24 {
-    fn from24(data: [u8; EM_LEN * 3]) -> anyhow::Result<Embedding<f32>>;
+    fn from24(data: &[u8]) -> anyhow::Result<Embedding<f32>>;
     fn to24(&self) -> Vec<u8>;
 }
 
-impl ToFrom24 for Embedding<f32> {
+impl ToFrom24 for Vec<f32> {
     /** Convert the embedding back into f32 from i24. */
-    fn from24(data: [u8; EM_LEN * 3]) -> anyhow::Result<Embedding<f32>> {
+    fn from24(data: &[u8]) -> anyhow::Result<Embedding<f32>> {
         let mut result = [0.0f32; EM_LEN];
         for i in 0..EM_LEN {
             let mut v: i32 = 0;

@@ -27,7 +27,8 @@ pub enum SearchProviderMessage {
     },
     MoreLikeSearch {
         otx: tokio::sync::oneshot::Sender<SearchResult>,
-        id: usize,
+        instance_id: String,
+        page_id: usize,
     },
     EmbeddingSearch {
         otx: tokio::sync::oneshot::Sender<SearchResult>,
@@ -36,6 +37,10 @@ pub enum SearchProviderMessage {
     ExtractedPageMessage {
         page: ExtractedPage,
         from_network: bool,
+    },
+    GetEmbedding {
+        page_id: usize,
+        otx: tokio::sync::oneshot::Sender<Vec<f32>>,
     },
     Stats {
         otx: tokio::sync::oneshot::Sender<SearchStats>,

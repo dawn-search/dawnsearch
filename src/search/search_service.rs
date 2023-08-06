@@ -27,14 +27,16 @@ use crate::search::search_provider::FoundPage;
 use crate::search::search_provider::SearchProvider;
 use crate::search::search_provider::SearchResult;
 use std::sync::mpsc::Receiver;
+use std::sync::mpsc::SyncSender;
 use tokio::sync::oneshot;
 use tokio_util::sync::CancellationToken;
 
 pub struct SearchService {
     pub config: Config,
     pub shutdown_token: CancellationToken,
-    pub search_provider_receiver: Receiver<SearchProviderMessage>,
+    pub search_rx: Receiver<SearchProviderMessage>,
     pub udp_tx: tokio::sync::mpsc::Sender<UdpM>,
+    pub search_tx: SyncSender<SearchProviderMessage>,
 }
 
 impl SearchService {
@@ -48,7 +50,7 @@ impl SearchService {
                 Ok(s) => s,
             };
         println!("SearchProvider ready");
-        while let Ok(message) = self.search_provider_receiver.recv() {
+        while let Ok(message) = self.search_rx.recv() {
             match message {
                 TextSearch { otx, query } => {
                     let embedding = search_provider.get_embedding(&query).unwrap();
@@ -63,65 +65,7 @@ impl SearchService {
                             }
                         }
                     };
-
-                    let mut all_found_pages = result.pages;
-
-                    // Store them in a BestResults
-                    let mut best = BestResults::new(20);
-                    for (id, page) in all_found_pages.iter().enumerate() {
-                        best.insert(NodeReference {
-                            id,
-                            distance: page.distance,
-                        });
-                    }
-                    // We now also know what our worst result is.
-                    let worst_distance = best.worst_distance();
-
-                    let udp_tx2 = self.udp_tx.clone();
-                    tokio::spawn(async move {
-                        // Also fire it off to the network.
-                        let (otxx, orxx) = oneshot::channel();
-                        udp_tx2
-                            .send(UdpM::Search {
-                                embedding,
-                                distance_limit: Some(worst_distance),
-                                tx: otxx,
-                            })
-                            .await
-                            .unwrap();
-                        let r = orxx.await.unwrap();
-
-                        // Add our own results to this.
-                        let total_pages = result.pages_searched;
-                        for x in r.results {
-                            best.insert(NodeReference {
-                                id: all_found_pages.len(),
-                                distance: x.distance,
-                            });
-                            all_found_pages.push(FoundPage {
-                                id: 0,
-                                title: x.title,
-                                distance: x.distance,
-                                url: x.url,
-                                text: x.text,
-                            });
-                        }
-
-                        // We have collected our results.
-                        best.sort();
-                        let real_results: Vec<FoundPage> = best
-                            .results()
-                            .iter()
-                            .map(|nr| all_found_pages[nr.id].clone())
-                            .collect();
-
-                        otx.send(SearchResult {
-                            pages: real_results,
-                            pages_searched: total_pages + r.pages_searched,
-                            servers_contacted: r.servers_contacted,
-                        })
-                        .expect("Send response");
-                    });
+                    self.search_remote(result, embedding, otx);
                 }
                 EmbeddingSearch { otx, embedding } => {
                     let result = match search_provider.search_embedding(&embedding) {
@@ -137,19 +81,45 @@ impl SearchService {
                     };
                     otx.send(result).expect("Send response");
                 }
-                MoreLikeSearch { otx, id } => {
-                    let result = match search_provider.search_like(id) {
-                        Ok(r) => r,
-                        Err(e) => {
-                            println!("Failed to perform query: {}", e);
-                            SearchResult {
-                                pages: Vec::new(),
-                                pages_searched: 0,
-                                servers_contacted: 0,
+                MoreLikeSearch {
+                    otx,
+                    instance_id,
+                    page_id,
+                } => {
+                    if instance_id == "" {
+                        let result = match search_provider.search_like(page_id) {
+                            Ok(r) => r,
+                            Err(e) => {
+                                println!("Failed to perform query: {}", e);
+                                SearchResult {
+                                    pages: Vec::new(),
+                                    pages_searched: 0,
+                                    servers_contacted: 0,
+                                }
                             }
-                        }
-                    };
-                    otx.send(result).expect("Send response");
+                        };
+                        otx.send(result).expect("Send response");
+                    } else {
+                        // Reference to a peer, ask it for the embedding so we can search for it.
+                        let (otxx, orxx) = oneshot::channel();
+                        let search_tx2 = self.search_tx.clone();
+                        let udp_tx2 = self.udp_tx.clone();
+                        tokio::spawn(async move {
+                            udp_tx2
+                                .send(UdpM::GetEmbedding {
+                                    instance_id,
+                                    page_id,
+                                    tx: otxx,
+                                })
+                                .await
+                                .unwrap();
+                            let embedding = orxx.await.unwrap();
+                            // Pass it back into ourselves as a normal query.
+                            search_tx2
+                                .send(SearchProviderMessage::EmbeddingSearch { otx, embedding })
+                                .unwrap();
+                        });
+                    }
                 }
                 ExtractedPageMessage { page, from_network } => {
                     if search_provider.local_space_available() {
@@ -171,6 +141,10 @@ impl SearchService {
                     let stats = search_provider.stats();
                     otx.send(stats).expect("Send response");
                 }
+                GetEmbedding { page_id, otx } => {
+                    let em = search_provider.embedding_for_page(page_id).unwrap();
+                    otx.send(em).expect("Send response");
+                }
                 Save => {
                     search_provider.save().unwrap();
                 }
@@ -180,5 +154,72 @@ impl SearchService {
                 }
             }
         }
+    }
+
+    fn search_remote(
+        &mut self,
+        result: SearchResult,
+        embedding: Vec<f32>,
+        otx: oneshot::Sender<SearchResult>,
+    ) {
+        let mut all_found_pages = result.pages;
+
+        // Store them in a BestResults
+        let mut best = BestResults::new(20);
+        for (id, page) in all_found_pages.iter().enumerate() {
+            best.insert(NodeReference {
+                id,
+                distance: page.distance,
+            });
+        }
+        // We now also know what our worst result is.
+        let worst_distance = best.worst_distance();
+
+        let udp_tx2 = self.udp_tx.clone();
+        tokio::spawn(async move {
+            // Also fire it off to the network.
+            let (otxx, orxx) = oneshot::channel();
+            udp_tx2
+                .send(UdpM::Search {
+                    embedding,
+                    distance_limit: Some(worst_distance),
+                    tx: otxx,
+                })
+                .await
+                .unwrap();
+            let r = orxx.await.unwrap();
+
+            // Add our own results to this.
+            let total_pages = result.pages_searched;
+            for x in r.results {
+                best.insert(NodeReference {
+                    id: all_found_pages.len(),
+                    distance: x.distance,
+                });
+                all_found_pages.push(FoundPage {
+                    instance_id: x.instance_id,
+                    page_id: x.page_id,
+                    title: x.title,
+                    distance: x.distance,
+                    url: x.url,
+                    text: x.text,
+                });
+            }
+
+            // We have collected our results.
+            best.sort();
+            let real_results: Vec<FoundPage> = best
+                .results()
+                .iter()
+                .map(|nr| all_found_pages[nr.id].clone())
+                .collect();
+
+            otx.send(SearchResult {
+                pages: real_results,
+                pages_searched: total_pages + r.pages_searched,
+                servers_contacted: r.servers_contacted,
+            })
+            .expect("Send response");
+        });
     }
 }

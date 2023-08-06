@@ -57,6 +57,8 @@ pub enum UdpMessage {
 
         #[serde(rename = "ii")]
         instance_id: String,
+        #[serde(rename = "pi")]
+        page_id: usize,
     },
     Insert {
         #[serde(rename = "us")]
@@ -68,6 +70,19 @@ pub enum UdpMessage {
         #[serde(rename = "xs")]
         #[serde(with = "serde_bytes")]
         text_smaz: Vec<u8>,
+    },
+    GetEmbedding {
+        #[serde(rename = "si")]
+        search_id: u64,
+        #[serde(rename = "pi")]
+        page_id: usize,
+    },
+    Embedding {
+        #[serde(rename = "si")]
+        search_id: u64,
+        #[serde(rename = "em")]
+        #[serde(with = "serde_bytes")]
+        embedding: Vec<u8>, // 1152
     },
     ////////////////////
     // Tracker messages

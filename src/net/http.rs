@@ -140,9 +140,14 @@ pub async fn http_server_loop(
                         })
                         .unwrap();
                     } else if key == "s" {
+                        let vv: Vec<&str> = value.split(":").collect();
+                        if vv.len() != 2 {
+                            return; // TODO: Send error back.
+                        }
                         tx.send(MoreLikeSearch {
                             otx,
-                            id: str::parse(value).unwrap(),
+                            instance_id: vv[0].to_string(),
+                            page_id: str::parse(vv[1]).unwrap(),
                         })
                         .unwrap();
                     }

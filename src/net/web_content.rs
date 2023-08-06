@@ -298,14 +298,10 @@ pub fn format_results(result: &SearchResult, elapsed: Duration) -> String {
         } else {
             result.distance
         }; // Prevent -0.0 from showing up.
-        let explore = if result.id > 0 {
-            format!(
-                r#"<a href="?s={}" title="Find pages like this one">explore</a>"#,
-                result.id
-            )
-        } else {
-            String::new()
-        };
+        let explore = format!(
+            r#"<a href="?s={}:{}" title="Find pages like this one">explore</a>"#,
+            result.instance_id, result.page_id
+        );
         r += &format!(
             r#"
 <div class="result-top">{:.2} {explore} <i class="result-url">{}</i></div>

@@ -21,7 +21,7 @@ use crate::config::Config;
 use crate::net::udp_messages::{PeerInfo, UdpMessage};
 use crate::search::messages::SearchProviderMessage;
 use crate::search::page_source::ExtractedPage;
-use crate::search::vector::{Embedding, ToFrom24};
+use crate::search::vector::ToFrom24;
 use crate::util::{now, slice_up_to};
 use anyhow::bail;
 use rand::distributions::Alphanumeric;
@@ -70,6 +70,8 @@ pub async fn find_port() -> anyhow::Result<UdpSocket> {
 
 #[derive(Debug, Clone)]
 pub struct PageFromNetwork {
+    pub instance_id: String,
+    pub page_id: usize,
     pub distance: f32,
     pub url: String,
     pub title: String,
@@ -88,6 +90,11 @@ pub struct ActiveSearch {
     pages_searched: usize,
 }
 
+pub struct ActiveGetEmbedding {
+    /** Channel to which we send the results. */
+    tx: oneshot::Sender<Vec<f32>>,
+}
+
 #[derive(Debug)]
 pub struct NetworkSearchResult {
     pub results: Vec<PageFromNetwork>,
@@ -101,6 +108,11 @@ pub enum UdpM {
         embedding: Vec<f32>,
         distance_limit: Option<f32>,
         tx: oneshot::Sender<NetworkSearchResult>,
+    },
+    GetEmbedding {
+        instance_id: String,
+        page_id: usize,
+        tx: oneshot::Sender<Vec<f32>>,
     },
     Tick {},
     Announce {},
@@ -131,6 +143,7 @@ impl UdpService {
 
         let mut known_peers: Vec<PeerInfo> = Vec::new();
         let mut active_searches: HashMap<u64, ActiveSearch> = HashMap::new();
+        let mut active_get_embeddings: HashMap<u64, ActiveGetEmbedding> = HashMap::new();
 
         let my_id: String = rand::thread_rng()
             .sample_iter(&Alphanumeric)
@@ -160,7 +173,7 @@ impl UdpService {
                                 continue;
                             }
 
-                            let em = Embedding::<f32>::from24(embedding.try_into().unwrap()).unwrap();
+                            let em = Vec::<f32>::from24(&embedding).unwrap();
                             // Send search message to searchprovider.
                             let (otx, orx) = oneshot::channel();
                             self.search_provider_tx
@@ -179,6 +192,7 @@ impl UdpService {
                                 // Send message back.
                                 let m = UdpMessage::Page {
                                     instance_id: my_id.clone(),
+                                    page_id: page.page_id,
                                     search_id,
                                     distance: page.distance,
                                     url: page.url,
@@ -193,9 +207,15 @@ impl UdpService {
                         UdpMessage::Peers { peers } => {
                             known_peers = peers;
                         }
-                        UdpMessage::Page { search_id, distance, url, title, text, instance_id: _ } => {
+                        UdpMessage::Page { search_id, distance, url, title, text, instance_id, page_id } => {
                             if let Some(q) = active_searches.get_mut(&search_id) {
-                                q.results.push(PageFromNetwork { distance, url, title, text });
+                                q.results.push(PageFromNetwork {
+                                    instance_id,
+                                    page_id,
+                                    distance,
+                                    url,
+                                    title,
+                                    text });
                             } else {
                                 println!("Search result for unknown search {}", search_id);
                             }
@@ -222,6 +242,26 @@ impl UdpService {
                             })?;
                         }
                         UdpMessage::Announce {..} => {}
+                        UdpMessage::GetEmbedding { search_id, page_id } => {
+                            let (otx, orx) = oneshot::channel();
+                            self.search_provider_tx.send(SearchProviderMessage::GetEmbedding {
+                                page_id,
+                                otx,
+                            }).unwrap();
+                            let em: Vec<f32> = orx.await.unwrap();
+                            let m = UdpMessage::Embedding {
+                                search_id,
+                                embedding: em.to24().as_slice().try_into().unwrap(),
+                            };
+                            send_buf.clear();
+                            m.serialize(&mut Serializer::new(&mut send_buf)).unwrap();
+                            socket.send_to(&send_buf, &addr).await?;
+                        },
+                        UdpMessage::Embedding { search_id, embedding } => {
+                            if let Some(x) = active_get_embeddings.remove(&search_id) {
+                                x.tx.send(Vec::<f32>::from24(&embedding).unwrap().to_vec()).unwrap();
+                            }
+                        }
                     }
                 }
                 v = self.udp_rx.recv() => {
@@ -245,7 +285,6 @@ impl UdpService {
                                 pages_searched: 0,
                             });
 
-                            let em: Embedding<f32> = embedding.as_slice().try_into().unwrap();
                             // Let's fire this one off to our peers.
                             for peer in &known_peers {
                                 println!("Sending search to peer {}", peer.instance_id);
@@ -257,7 +296,7 @@ impl UdpService {
                                 let m = UdpMessage::Search {
                                     search_id,
                                     distance_limit,
-                                    embedding: em.to24().as_slice().try_into().unwrap(),
+                                    embedding: embedding.to24().as_slice().try_into().unwrap(),
                                 };
                                 send_buf.clear();
                                 m.serialize(&mut Serializer::new(&mut send_buf)).unwrap();
@@ -322,6 +361,22 @@ impl UdpService {
                             let peers: Vec<&PeerInfo> = { peers_that_accept_insert.choose_multiple(&mut rand::thread_rng(), 3).map(|x| *x).collect() } ;
                             for peer in peers {
                                 socket.send_to(&send_buf, &peer.addr).await?;
+                            }
+                        }
+                        UdpM::GetEmbedding { instance_id, page_id, tx } => {
+                            if let Some(instance) = known_peers.iter().find(|x| x.instance_id == instance_id) {
+                                send_buf.clear();
+
+                                let search_id: u64 = rand::thread_rng().gen();
+                                active_get_embeddings.insert(search_id, ActiveGetEmbedding {
+                                    tx,
+                                });
+                                let get_embedding_message = UdpMessage::GetEmbedding {
+                                    search_id,
+                                    page_id,
+                                };
+                                get_embedding_message.serialize(&mut Serializer::new(&mut send_buf)).unwrap();
+                                socket.send_to(&send_buf, &instance.addr).await?;
                             }
                         }
                     }

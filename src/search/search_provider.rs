@@ -53,7 +53,8 @@ pub struct SearchResult {
 
 #[derive(Debug, Clone)]
 pub struct FoundPage {
-    pub id: usize,
+    pub instance_id: String,
+    pub page_id: usize,
     pub distance: f32,
     pub url: String,
     pub title: String,
@@ -204,7 +205,7 @@ impl SearchProvider {
         self.search_embedding(q)
     }
 
-    pub fn search_like(&self, id: usize) -> Result<SearchResult, anyhow::Error> {
+    pub fn embedding_for_page(&self, id: usize) -> Result<Vec<f32>, anyhow::Error> {
         let mut s = self
             .sqlite
             .prepare("SELECT embedding FROM page WHERE id  = ?1")?;
@@ -213,9 +214,14 @@ impl SearchProvider {
             let embedding_bytes: Vec<u8> = r.get(0)?;
             let embedding = unsafe { bytes_to_embedding(embedding_bytes.as_slice().try_into()?)? };
 
-            return self.search_embedding(&embedding.to_vec());
+            return Ok(embedding.to_vec());
         }
         bail!("Page not found in DB: {}", id);
+    }
+
+    pub fn search_like(&self, id: usize) -> Result<SearchResult, anyhow::Error> {
+        let embedding = self.embedding_for_page(id)?;
+        return self.search_embedding(&embedding.to_vec());
     }
 
     pub fn search_embedding(
@@ -246,7 +252,8 @@ impl SearchProvider {
                 let text: String = r.get(3)?;
 
                 pages.push(FoundPage {
-                    id: id as usize,
+                    instance_id: String::new(),
+                    page_id: id as usize,
                     distance,
                     url,
                     title,

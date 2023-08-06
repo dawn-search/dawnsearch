@@ -55,24 +55,24 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let shutdown_token = original_shutdown_token.clone();
 
-    let (search_provider_sender, search_provider_receiver) =
-        std::sync::mpsc::sync_channel::<SearchProviderMessage>(2);
+    let (search_tx, search_rx) = std::sync::mpsc::sync_channel::<SearchProviderMessage>(2);
     let (udp_tx, mut udp_rx) = tokio::sync::mpsc::channel::<UdpM>(2);
 
-    let search_provider_tx = search_provider_sender.clone();
     let udp_tx2 = udp_tx.clone();
     let config2 = config.clone();
+    let search_tx2 = search_tx.clone();
     tokio::task::spawn_blocking(move || {
         SearchService {
             config: config2,
             shutdown_token,
-            search_provider_receiver,
+            search_rx,
+            search_tx: search_tx2,
             udp_tx: udp_tx2,
         }
         .start();
     });
 
-    let tx2 = search_provider_sender.clone();
+    let tx2 = search_tx.clone();
     tokio::spawn(async move {
         loop {
             tokio::time::sleep(Duration::from_secs(10 * 60)).await;
@@ -83,7 +83,7 @@ async fn main() -> Result<(), anyhow::Error> {
     });
 
     if config.index_cc_enabled {
-        let tx2 = search_provider_sender.clone();
+        let tx2 = search_tx.clone();
         tokio::spawn(async move {
             start_extraction_loop(tx2).await.unwrap();
         });
@@ -91,7 +91,7 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let config2 = config.clone();
     if config.web_enabled {
-        let tx2 = search_provider_sender.clone();
+        let tx2 = search_tx.clone();
         tokio::spawn(async move {
             http_server_loop(tx2, config2).await.unwrap();
         });
@@ -99,7 +99,7 @@ async fn main() -> Result<(), anyhow::Error> {
 
     if config.udp_enabled {
         let udp_service = UdpService {
-            search_provider_tx: search_provider_sender.clone(),
+            search_provider_tx: search_tx.clone(),
             udp_rx,
             config,
         };
@@ -140,7 +140,7 @@ async fn main() -> Result<(), anyhow::Error> {
     println!("Shutting down...");
 
     original_shutdown_token.cancel();
-    search_provider_tx.send(Shutdown)?;
+    search_tx.send(Shutdown)?;
 
     Ok(())
 }
