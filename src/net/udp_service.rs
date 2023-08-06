@@ -184,6 +184,7 @@ impl UdpService {
                                 .send(SearchProviderMessage::EmbeddingSearch {
                                     otx,
                                     embedding: em.to_vec(),
+                                    search_remote: false,
                                 })
                                 .unwrap();
                             let result = orx.await.expect("Receiving results");
@@ -311,7 +312,7 @@ impl UdpService {
 
                             // Let's fire this one off to our peers.
                             for peer in &known_peers {
-                                println!("[UDP] Sending search to peer {}", peer.instance_id);
+                                println!("[UDP] Sending search to peer {} at {}", peer.instance_id, peer.addr);
 
                                 active_searches.get_mut(&search_id).unwrap().servers_contacted += 1;
                                 // TODO: this is a bit optmistic, we should wait until we get a response from the peer.

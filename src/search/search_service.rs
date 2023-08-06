@@ -70,7 +70,11 @@ impl SearchService {
                     };
                     self.search_remote(result, embedding, otx);
                 }
-                EmbeddingSearch { otx, embedding } => {
+                EmbeddingSearch {
+                    otx,
+                    embedding,
+                    search_remote,
+                } => {
                     let result = match search_provider.search_embedding(&embedding) {
                         Ok(r) => r,
                         Err(e) => {
@@ -82,7 +86,11 @@ impl SearchService {
                             }
                         }
                     };
-                    self.search_remote(result, embedding, otx);
+                    if search_remote {
+                        self.search_remote(result, embedding, otx);
+                    } else {
+                        otx.send(result).expect("Sending embedding search result");
+                    }
                 }
                 MoreLikeSearch {
                     otx,
@@ -128,7 +136,11 @@ impl SearchService {
                             }
                             // Pass it back into ourselves as a normal query.
                             search_tx2
-                                .send(SearchProviderMessage::EmbeddingSearch { otx, embedding })
+                                .send(SearchProviderMessage::EmbeddingSearch {
+                                    otx,
+                                    embedding,
+                                    search_remote: true,
+                                })
                                 .unwrap();
                         });
                     }

@@ -34,6 +34,7 @@ pub enum SearchProviderMessage {
     EmbeddingSearch {
         otx: tokio::sync::oneshot::Sender<SearchResult>,
         embedding: Vec<f32>,
+        search_remote: bool,
     },
     ExtractedPageMessage {
         page: ExtractedPage,
