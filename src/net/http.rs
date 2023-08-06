@@ -22,6 +22,7 @@ use crate::net::web_content::{format_results, main_page, results_page};
 use crate::search::messages::SearchProviderMessage;
 use crate::search::messages::SearchProviderMessage::*;
 use std::sync::mpsc::SyncSender;
+use std::time::Instant;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
 use tokio::sync::oneshot;
@@ -126,6 +127,7 @@ pub async fn http_server_loop(
             let mut query = String::new();
             let results = match kv {
                 Some((key, value)) => {
+                    let start = Instant::now();
                     let (otx, orx) = oneshot::channel();
                     if key == "q" {
                         query = urlencoding::decode(value)
@@ -145,7 +147,7 @@ pub async fn http_server_loop(
                         .unwrap();
                     }
                     let result = orx.await.expect("Receiving results");
-                    Some(format_results(&result))
+                    Some(format_results(&result, start.elapsed()))
                 }
                 None => None,
             };

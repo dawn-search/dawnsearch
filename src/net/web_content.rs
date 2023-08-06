@@ -17,6 +17,8 @@
    along with DawnSearch.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+use std::time::Duration;
+
 use crate::{search::search_provider::SearchResult, util::slice_up_to};
 
 /**
@@ -277,9 +279,14 @@ fn search_box(search_query: &str) -> String {
     )
 }
 
-pub fn format_results(result: &SearchResult) -> String {
+pub fn format_results(result: &SearchResult, elapsed: Duration) -> String {
     let mut r = String::new();
-    r += &format!("<p>Searched {} pages</p>", result.pages_searched);
+    r += &format!(
+        "<p>Searched {} pages on {} instances in {:.2} seconds</p>",
+        result.pages_searched,
+        result.servers_contacted + 1,
+        elapsed.as_secs_f32()
+    );
     for result in &result.pages {
         let url_encoded_u = html_escape::encode_double_quoted_attribute(&result.url);
         let url_encoded = html_escape::encode_text(&result.url);

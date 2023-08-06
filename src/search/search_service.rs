@@ -59,6 +59,7 @@ impl SearchService {
                             SearchResult {
                                 pages: Vec::new(),
                                 pages_searched: 0,
+                                servers_contacted: 0,
                             }
                         }
                     };
@@ -92,7 +93,7 @@ impl SearchService {
 
                         // Add our own results to this.
                         let total_pages = result.pages_searched;
-                        for x in r {
+                        for x in r.results {
                             best.insert(NodeReference {
                                 id: all_found_pages.len(),
                                 distance: x.distance,
@@ -117,6 +118,7 @@ impl SearchService {
                         otx.send(SearchResult {
                             pages: real_results,
                             pages_searched: total_pages,
+                            servers_contacted: r.servers_contacted,
                         })
                         .expect("Send response");
                     });
@@ -129,6 +131,7 @@ impl SearchService {
                             SearchResult {
                                 pages: Vec::new(),
                                 pages_searched: 0,
+                                servers_contacted: 0,
                             }
                         }
                     };
@@ -142,6 +145,7 @@ impl SearchService {
                             SearchResult {
                                 pages: Vec::new(),
                                 pages_searched: 0,
+                                servers_contacted: 0,
                             }
                         }
                     };
@@ -162,6 +166,10 @@ impl SearchService {
                             }
                         });
                     }
+                }
+                Stats { otx } => {
+                    let stats = search_provider.stats();
+                    otx.send(stats).expect("Send response");
                 }
                 Save => {
                     search_provider.save().unwrap();

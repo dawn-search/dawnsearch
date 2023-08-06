@@ -18,7 +18,7 @@
 */
 
 use super::page_source::ExtractedPage;
-use super::search_provider::SearchResult;
+use super::search_provider::{SearchResult, SearchStats};
 
 pub enum SearchProviderMessage {
     TextSearch {
@@ -36,6 +36,9 @@ pub enum SearchProviderMessage {
     ExtractedPageMessage {
         page: ExtractedPage,
         from_network: bool,
+    },
+    Stats {
+        otx: tokio::sync::oneshot::Sender<SearchStats>,
     },
     Save,
     Shutdown,

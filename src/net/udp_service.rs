@@ -78,17 +78,29 @@ pub struct PageFromNetwork {
 
 pub struct ActiveSearch {
     search_id: u64,
-    results: Vec<PageFromNetwork>,
     deadline: Instant,
     /** Channel to which we send the results. */
-    tx: oneshot::Sender<Vec<PageFromNetwork>>,
+    tx: oneshot::Sender<NetworkSearchResult>,
+
+    results: Vec<PageFromNetwork>,
+    servers_contacted: usize,
+    servers_responded: usize,
+    pages_searched: usize,
+}
+
+#[derive(Debug)]
+pub struct NetworkSearchResult {
+    pub results: Vec<PageFromNetwork>,
+    pub servers_contacted: usize,
+    pub servers_responded: usize,
+    pub pages_searched: usize,
 }
 
 pub enum UdpM {
     Search {
         embedding: Vec<f32>,
         distance_limit: Option<f32>,
-        tx: oneshot::Sender<Vec<PageFromNetwork>>,
+        tx: oneshot::Sender<NetworkSearchResult>,
     },
     Tick {},
     Announce {},
@@ -167,6 +179,7 @@ impl UdpService {
                                 }
                                 // Send message back.
                                 let m = UdpMessage::Page {
+                                    instance_id: my_id.clone(),
                                     search_id,
                                     distance: page.distance,
                                     url: page.url,
@@ -182,7 +195,7 @@ impl UdpService {
                         UdpMessage::Peers { peers } => {
                             known_peers = peers;
                         }
-                        UdpMessage::Page { search_id, distance, url, title, text } => {
+                        UdpMessage::Page { search_id, distance, url, title, text, instance_id: _ } => {
                             if let Some(q) = active_searches.get_mut(&search_id) {
                                 q.results.push(PageFromNetwork { distance, url, title, text });
                             } else {
@@ -229,12 +242,19 @@ impl UdpService {
                                 results: Vec::new(),
                                 deadline,
                                 tx,
+                                servers_contacted: 0,
+                                servers_responded: 0,
+                                pages_searched: 0,
                             });
 
                             let em: Embedding<f32> = embedding.as_slice().try_into().unwrap();
                             // Let's fire this one off to our peers.
                             for peer in &known_peers {
-                                println!("Sending search to peer {}", peer.id);
+                                println!("Sending search to peer {}", peer.instance_id);
+
+                                active_searches.get_mut(&search_id).unwrap().servers_contacted += 1;
+                                // TODO: this is a bit optmistic, we should wait until we get a response from the peer.
+                                active_searches.get_mut(&search_id).unwrap().pages_searched += peer.pages_indexed;
 
                                 let m = UdpMessage::Search {
                                     search_id,
@@ -250,7 +270,11 @@ impl UdpService {
                             let searches_to_remove: Vec<u64> = active_searches.values().filter(|v| Instant::now() > v.deadline).map(|v| v.search_id).collect();
                             for t in searches_to_remove {
                                 let removed = active_searches.remove(&t).unwrap();
-                                removed.tx.send(removed.results).unwrap();
+                                removed.tx.send(NetworkSearchResult {
+                                    results: removed.results,
+                                    servers_contacted: removed.servers_contacted,
+                                    servers_responded: removed.servers_responded,
+                                    pages_searched: removed.pages_searched }).unwrap();
                             }
                             // Remove old peers.
                             known_peers.retain(|p| p.last_seen + 300 > now());
@@ -261,10 +285,16 @@ impl UdpService {
                                 update_upnp(listening_port)?;
                             }
 
+                            // Query the search service for the number of indexed pages.
+                            let (otx, orx) = oneshot::channel();
+                            self.search_provider_tx.send(SearchProviderMessage::Stats { otx }).unwrap();
+                            let stats = orx.await.unwrap();
+
                             // Announce
                             let announce_message = UdpMessage::Announce {
-                                id: my_id.clone(),
+                                instance_id: my_id.clone(),
                                 accept_insert: self.config.accept_insert,
+                                pages_indexed: stats.pages_indexed,
                             };
                             send_buf.clear();
                             announce_message

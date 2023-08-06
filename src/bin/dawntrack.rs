@@ -67,8 +67,12 @@ async fn main() -> anyhow::Result<()> {
         let mut de = Deserializer::new(&buf[..len]);
         let message: UdpMessage = Deserialize::deserialize(&mut de).unwrap();
         match message {
-            UdpMessage::Announce { id, accept_insert } => {
-                println!("Announce ID {} addr {}", id, addr);
+            UdpMessage::Announce {
+                instance_id,
+                accept_insert,
+                pages_indexed,
+            } => {
+                println!("Announce ID {} addr {}", instance_id, addr);
                 if let Some(x) = &external_address {
                     if addr.ip().is_loopback() {
                         addr.set_ip(x.parse().unwrap());
@@ -76,17 +80,18 @@ async fn main() -> anyhow::Result<()> {
                     }
                 }
                 peers.insert(
-                    id.clone(),
+                    instance_id.clone(),
                     PeerInfo {
-                        id: id.clone(),
+                        instance_id: instance_id.clone(),
                         addr: addr.to_string(),
                         last_seen: now(),
                         accept_insert,
+                        pages_indexed,
                     },
                 );
                 let all: Vec<PeerInfo> = peers
                     .values()
-                    .filter(|p| p.id != id && now() - p.last_seen < 10 * 60)
+                    .filter(|p| p.instance_id != instance_id && now() - p.last_seen < 10 * 60)
                     .map(|x| x.clone())
                     .collect();
                 for chunk in all.chunks(25) {

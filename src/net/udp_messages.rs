@@ -27,13 +27,13 @@ use serde::{Deserialize, Serialize};
 pub enum UdpMessage {
     #[serde(rename = "s")]
     Search {
-        #[serde(rename = "i")]
+        #[serde(rename = "si")]
         search_id: u64,
         /** Do not return pages with a distance bigger than this. */
         #[serde(rename = "dl")]
         distance_limit: Option<f32>,
         /** Embedding quantized as i24, little endian. */
-        #[serde(rename = "e")]
+        #[serde(rename = "em")]
         #[serde(with = "serde_bytes")]
         embedding: Vec<u8>, // 1152
     },
@@ -44,16 +44,19 @@ pub enum UdpMessage {
     /** Responder -> Searcher. Information on a found page. */
     #[serde(rename = "pg")]
     Page {
-        #[serde(rename = "i")]
+        #[serde(rename = "si")]
         search_id: u64,
-        #[serde(rename = "d")]
+        #[serde(rename = "di")]
         distance: f32,
-        #[serde(rename = "u")]
+        #[serde(rename = "ur")]
         url: String, // 200?
-        #[serde(rename = "t")]
+        #[serde(rename = "ti")]
         title: String, // 200?
-        #[serde(rename = "x")]
+        #[serde(rename = "te")]
         text: String, // 500?
+
+        #[serde(rename = "ii")]
+        instance_id: String,
     },
     Insert {
         #[serde(rename = "us")]
@@ -71,24 +74,30 @@ pub enum UdpMessage {
     /** Let other peers know we're here. */
     #[serde(rename = "a")]
     Announce {
-        id: String,
+        #[serde(rename = "ii")]
+        instance_id: String,
         #[serde(rename = "ai")]
         accept_insert: bool,
+        #[serde(rename = "pi")]
+        pages_indexed: usize,
     },
     #[serde(rename = "p")]
     Peers {
-        #[serde(rename = "p")]
+        #[serde(rename = "pe")]
         peers: Vec<PeerInfo>,
     },
 }
 
 #[derive(Debug, PartialEq, Deserialize, Serialize, Clone)]
 pub struct PeerInfo {
-    pub id: String,
+    #[serde(rename = "ii")]
+    pub instance_id: String,
     #[serde(rename = "a")]
     pub addr: String, // TODO: replace by binary value.
     #[serde(rename = "ls")]
     pub last_seen: u64,
     #[serde(rename = "ai")]
     pub accept_insert: bool,
+    #[serde(rename = "pi")]
+    pub pages_indexed: usize,
 }

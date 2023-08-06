@@ -47,6 +47,7 @@ const INDEX_OPTIONS: IndexOptions = IndexOptions {
 #[derive(Debug)]
 pub struct SearchResult {
     pub pages: Vec<FoundPage>,
+    pub servers_contacted: usize,
     pub pages_searched: usize,
 }
 
@@ -57,6 +58,11 @@ pub struct FoundPage {
     pub url: String,
     pub title: String,
     pub text: String,
+}
+
+#[derive(Debug)]
+pub struct SearchStats {
+    pub pages_indexed: usize,
 }
 
 pub struct SearchProvider {
@@ -161,7 +167,7 @@ impl SearchProvider {
         Ok(())
     }
 
-    fn page_count(&mut self) -> Result<usize, anyhow::Error> {
+    fn page_count(&self) -> Result<usize, anyhow::Error> {
         let count = self
             .sqlite
             .query_row("SELECT count(*) FROM page", (), |row| {
@@ -254,6 +260,7 @@ impl SearchProvider {
 
         Ok(SearchResult {
             pages,
+            servers_contacted: 0,
             pages_searched: self.index.size(),
         })
     }
@@ -337,5 +344,10 @@ impl SearchProvider {
             );
         }
         Ok(())
+    }
+    pub fn stats(&self) -> SearchStats {
+        SearchStats {
+            pages_indexed: self.page_count().unwrap_or(0),
+        }
     }
 }
