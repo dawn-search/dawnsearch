@@ -123,13 +123,6 @@ pub async fn http_server_loop(
                 line.clear();
             }
 
-            socket
-                .write_all(
-                    "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n\r\n".as_bytes(),
-                )
-                .await
-                .unwrap();
-
             let mut query = String::new();
             let results = match kv {
                 Some((key, value)) => {
@@ -156,6 +149,13 @@ pub async fn http_server_loop(
                 }
                 None => None,
             };
+
+            socket
+                .write_all(
+                    "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n\r\n".as_bytes(),
+                )
+                .await
+                .unwrap();
             if let Some(r) = results {
                 socket
                     .write_all(results_page(&query, &r).as_bytes())
