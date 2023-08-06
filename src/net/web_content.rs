@@ -119,6 +119,10 @@ pub fn page(title: &str, body: &str) -> String {
             padding-bottom: 0.6em;
             background-color: #f9f9f9;
             margin-top: 1.5em;
+            font-size: 95%;
+        }}
+        .description > h3 {{
+            font-size: inherit;
         }}
         .top-search {{
             display: flex;
@@ -232,8 +236,7 @@ pub fn main_page() -> String {
 <div class="description">
 <h3>What is DawnSearch?</h3>
 <p>
-    The DawnSearch project has as goal to build a new searching paradigm.
-    No longer centralized, controlled by big corporations, but a more human kind of search, one that values discovery and inspiration.
+    DawnSearch aims to be an alternative to the search engines controlled by big corporations.
 </p>
 <ul>
 <li>
@@ -245,8 +248,8 @@ pub fn main_page() -> String {
 </li>
 <li>
     DawnSearch does not search for the words you type in directly. An AI model will read your search query and convert
-    it into a list of 384 numbers, which you can consider a location in a 384-dimensional space. All documents in DawnSearch have also been analyzed and given a location.
-    We then simply look for the documents which are closest to your query.
+    it into a list of numbers, which is interpeted as a location in 384-dimensional space. All documents in DawnSearch have also been analyzed and given a location.
+    It then simply looks for the documents which are closest to your query.
 </li>
 </ul>
 <h3>Privacy</h3>
