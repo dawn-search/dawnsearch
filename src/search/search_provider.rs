@@ -50,7 +50,7 @@ pub struct SearchResult {
     pub pages_searched: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FoundPage {
     pub id: usize,
     pub distance: f32,

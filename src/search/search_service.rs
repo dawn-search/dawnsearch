@@ -18,6 +18,8 @@
 */
 
 use crate::net::udp_service::UdpM;
+use crate::search::best_results::BestResults;
+use crate::search::best_results::NodeReference;
 use crate::search::messages::SearchProviderMessage;
 use crate::search::messages::SearchProviderMessage::*;
 use crate::search::search_provider::FoundPage;
@@ -60,6 +62,19 @@ impl SearchService {
                         }
                     };
 
+                    let mut all_found_pages = result.pages;
+
+                    // Store them in a BestResults
+                    let mut best = BestResults::new(20);
+                    for (id, page) in all_found_pages.iter().enumerate() {
+                        best.insert(NodeReference {
+                            id,
+                            distance: page.distance,
+                        });
+                    }
+                    // We now also know what our worst result is.
+                    let worst_distance = best.worst_distance();
+
                     let udp_tx2 = self.udp_tx.clone();
                     tokio::spawn(async move {
                         // Also fire it off to the network.
@@ -67,29 +82,39 @@ impl SearchService {
                         udp_tx2
                             .send(UdpM::Search {
                                 embedding,
+                                distance_limit: Some(worst_distance),
                                 tx: otxx,
                             })
                             .await
                             .unwrap();
                         let r = orxx.await.unwrap();
 
-                        let mut r2 = result.pages;
-
                         // Add our own results to this.
                         let total_pages = result.pages_searched;
                         for x in r {
-                            r2.push(FoundPage {
+                            best.insert(NodeReference {
+                                id: all_found_pages.len(),
+                                distance: x.distance,
+                            });
+                            all_found_pages.push(FoundPage {
                                 id: 0,
                                 title: x.title,
                                 distance: x.distance,
                                 url: x.url,
                                 text: x.text,
                             });
-                            // TODO: add pages searched from the network.
                         }
 
+                        // We have collected our results.
+                        best.sort();
+                        let real_results: Vec<FoundPage> = best
+                            .results()
+                            .iter()
+                            .map(|nr| all_found_pages[nr.id].clone())
+                            .collect();
+
                         otx.send(SearchResult {
-                            pages: r2,
+                            pages: real_results,
                             pages_searched: total_pages,
                         })
                         .expect("Send response");

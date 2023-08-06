@@ -86,6 +86,7 @@ pub struct ActiveSearch {
 pub enum UdpM {
     Search {
         embedding: Vec<f32>,
+        distance_limit: Option<f32>,
         tx: oneshot::Sender<Vec<PageFromNetwork>>,
     },
     Tick {},
@@ -141,7 +142,7 @@ impl UdpService {
                     };
 
                     match message {
-                        UdpMessage::Search { search_id, embedding } => {
+                        UdpMessage::Search { search_id, distance_limit, embedding } => {
                             // Slightly hacky way to make sure we don't send searches to ourselves by accident.
                             // TODO: using the ID of a peer for this would be better.
                             if active_searches.contains_key(&search_id) {
@@ -160,6 +161,11 @@ impl UdpService {
                                 .unwrap();
                             let result = orx.await.expect("Receiving results");
                             for page in result.pages {
+                                if let Some(d) = distance_limit {
+                                    if page.distance >= d {
+                                        continue; // They are not interested in this one.
+                                    }
+                                }
                                 // Send message back.
                                 let m = UdpMessage::Page {
                                     search_id,
@@ -209,7 +215,7 @@ impl UdpService {
                     // Message to the UDP service
                     let m = v.unwrap();
                     match m {
-                        UdpM::Search { embedding, tx } => {
+                        UdpM::Search { embedding, distance_limit, tx } => {
                             let search_id: u64 = rand::thread_rng().gen();
                             println!("[UDP] Search started with id {}", search_id);
                             let mut deadline = Instant::now();
@@ -230,6 +236,7 @@ impl UdpService {
 
                                 let m = UdpMessage::Search {
                                     search_id,
+                                    distance_limit,
                                     embedding: em.to24().as_slice().try_into().unwrap(),
                                 };
                                 send_buf.clear();

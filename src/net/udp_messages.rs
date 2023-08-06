@@ -29,6 +29,9 @@ pub enum UdpMessage {
     Search {
         #[serde(rename = "i")]
         search_id: u64,
+        /** Do not return pages with a distance bigger than this. */
+        #[serde(rename = "dl")]
+        distance_limit: Option<f32>,
         /** Embedding quantized as i24, little endian. */
         #[serde(rename = "e")]
         #[serde(with = "serde_bytes")]
