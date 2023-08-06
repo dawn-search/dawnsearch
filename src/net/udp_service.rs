@@ -243,6 +243,11 @@ impl UdpService {
                         }
                         UdpMessage::Announce {..} => {}
                         UdpMessage::GetEmbedding { search_id, page_id } => {
+                            // Slightly hacky way to make sure we don't send searches to ourselves by accident.
+                            // TODO: using the ID of a peer for this would be better.
+                            if active_get_embeddings.contains_key(&search_id) {
+                                continue;
+                            }
                             let (otx, orx) = oneshot::channel();
                             self.search_provider_tx.send(SearchProviderMessage::GetEmbedding {
                                 page_id,
