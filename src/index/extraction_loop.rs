@@ -54,7 +54,10 @@ pub async fn start_extraction_loop(
         let random_file: &str = &files[rand::thread_rng().gen_range(0..files.len())];
         if let Err(e) = extract_file(sender.clone(), random_file).await {
             eprintln!("Error processing {}: {}", random_file, e);
-            tokio::time::sleep(Duration::from_secs(5)).await;
+            // Sleep so we don't get rate limited by performing too many requests.
+            tokio::time::sleep(Duration::from_secs(60)).await;
+        } else {
+            tokio::time::sleep(Duration::from_secs(10)).await;
         }
     }
 }
