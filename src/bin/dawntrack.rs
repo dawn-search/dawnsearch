@@ -67,7 +67,7 @@ async fn main() -> anyhow::Result<()> {
         let mut de = Deserializer::new(&buf[..len]);
         let message: UdpMessage = Deserialize::deserialize(&mut de).unwrap();
         match message {
-            UdpMessage::Announce { id } => {
+            UdpMessage::Announce { id, accept_insert } => {
                 println!("Announce ID {} addr {}", id, addr);
                 if let Some(x) = &external_address {
                     if addr.ip().is_loopback() {
@@ -81,6 +81,7 @@ async fn main() -> anyhow::Result<()> {
                         id: id.clone(),
                         addr: addr.to_string(),
                         last_seen: now(),
+                        accept_insert,
                     },
                 );
                 let all: Vec<PeerInfo> = peers
