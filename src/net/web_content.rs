@@ -34,7 +34,7 @@ pub fn page(title: &str, body: &str) -> String {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
         body {{
-            font-family: 'Open Sans Light','sans-serif';
+            font-family: 'Open Sans Light','sans-serif', sans-serif;
             width: 100%;
             height: 100%;
             padding-bottom: 1em;
@@ -46,7 +46,7 @@ pub fn page(title: &str, body: &str) -> String {
             color: #4f009f;      
             font-weight: 300;
             /* To get the light font weight to work on Chrome. */
-            font-family: 'Open Sans Light','sans-serif';
+            font-family: 'Open Sans Light','sans-serif', sans-serif;
         }}
         .tagline {{
             margin-left: 2em;
