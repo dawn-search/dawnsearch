@@ -21,7 +21,7 @@ use crate::net::udp_messages::{PeerInfo, UdpMessage};
 use crate::search::messages::SearchProviderMessage;
 use crate::search::page_source::ExtractedPage;
 use crate::search::vector::{Embedding, ToFrom24};
-use crate::util::slice_up_to;
+use crate::util::{now, slice_up_to};
 use anyhow::bail;
 use rand::distributions::Alphanumeric;
 use rand::seq::SliceRandom;
@@ -142,6 +142,12 @@ impl UdpService {
 
                     match message {
                         UdpMessage::Search { search_id, embedding } => {
+                            // Slightly hacky way to make sure we don't send searches to ourselves by accident.
+                            // TODO: using the ID of a peer for this would be better.
+                            if active_searches.contains_key(&search_id) {
+                                continue;
+                            }
+
                             let em = Embedding::<f32>::from24(embedding.try_into().unwrap()).unwrap();
                             println!("Received embedding {:?}", em);
                             // Send search message to searchprovider.
@@ -218,7 +224,6 @@ impl UdpService {
                             });
 
                             let em: Embedding<f32> = embedding.as_slice().try_into().unwrap();
-
                             // Let's fire this one off to our peers.
                             for peer in &known_peers {
                                 println!("Sending search to peer {}", peer.id);
@@ -233,11 +238,13 @@ impl UdpService {
                             }
                         }
                         UdpM::Tick { } => {
-                            let to_remove: Vec<u64> = active_searches.values().filter(|v| Instant::now() > v.deadline).map(|v| v.search_id).collect();
-                            for t in to_remove {
+                            let searches_to_remove: Vec<u64> = active_searches.values().filter(|v| Instant::now() > v.deadline).map(|v| v.search_id).collect();
+                            for t in searches_to_remove {
                                 let removed = active_searches.remove(&t).unwrap();
                                 removed.tx.send(removed.results).unwrap();
                             }
+                            // Remove old peers.
+                            known_peers.retain(|p| p.last_seen + 300 > now());
                         }
                         UdpM::Announce {} => {
                             #[cfg(feature = "upnp")]
