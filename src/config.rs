@@ -17,6 +17,8 @@
    along with DawnSearch.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+use std::fs;
+
 #[derive(Clone)]
 pub struct Config {
     pub config_file: String,
@@ -38,16 +40,17 @@ pub struct Config {
 
 impl Config {
     pub fn load(config_file: &str) -> Config {
-        let settings = config::Config::builder()
-            .add_source(config::File::with_name(&config_file))
-            // Add in settings from the environment (with a prefix of DAWNSEARCH)
-            // Eg.. `DAWNSEARCH_DEBUG=1 ./target/app` would set the `debug` key
-            .add_source(config::Environment::with_prefix("DAWNSEARCH"))
-            .build()
-            .unwrap();
+        let mut builder = config::Config::builder();
+        let mut used_config_file = "<none>";
+        if fs::metadata(&config_file).is_ok() {
+            builder = builder.add_source(config::File::with_name(&config_file));
+            used_config_file = config_file;
+        }
+        builder = builder.add_source(config::Environment::with_prefix("DAWNSEARCH"));
+        let settings = builder.build().unwrap();
 
         Config {
-            config_file: config_file.to_string(),
+            config_file: used_config_file.to_string(),
             index_cc_enabled: settings.get_bool("index_cc").unwrap_or(false),
             web_enabled: settings.get_bool("web").unwrap_or(true),
             web_listen_address: settings

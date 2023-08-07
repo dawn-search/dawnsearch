@@ -24,7 +24,7 @@ use dawnsearch::util::now;
 use rmp_serde::{Deserializer, Serializer};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::env;
+use std::{env, fs};
 use tokio::net::UdpSocket;
 
 #[tokio::main]
@@ -41,14 +41,15 @@ async fn main() -> anyhow::Result<()> {
         "DawnTrack.toml".to_string()
     };
 
-    println!("Config file: {}", config_file);
-    let settings = Config::builder()
-        .add_source(config::File::with_name(&config_file))
-        // Add in settings from the environment (with a prefix of DAWNSEARCH)
-        // Eg.. `DAWNSEARCH_DEBUG=1 ./target/app` would set the `debug` key
-        .add_source(config::Environment::with_prefix("DAWNTRACK"))
-        .build()
-        .unwrap();
+    let mut builder = Config::builder();
+    if fs::metadata(&config_file).is_ok() {
+        println!("Config file: {}", config_file);
+        builder = builder.add_source(config::File::with_name(&config_file));
+    } else {
+        println!("Config file: <none>");
+    }
+    builder = builder.add_source(config::Environment::with_prefix("DAWNTRACK"));
+    let settings = builder.build().unwrap();
 
     let udp_listen_address = settings
         .get_string("udp_listen_address")

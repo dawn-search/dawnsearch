@@ -2,7 +2,8 @@
 web = true
 
 # The address the web interface will listen on.
-# 0.0.0.0 is 'all addresses' and :0 means 'a random port'.
+# 0.0.0.0 is 'all addresses', so if this port is open to the internet
+# other people will be able to connect.
 web_listen_address = "0.0.0.0:8080"
 
 # Enable the UDP subsystem, for communication with other instances.
@@ -10,15 +11,20 @@ udp = true
 
 # The address the UDP subsystem will listen on and send packets from.
 # 0.0.0.0 is 'all addresses' and :0 means 'a random port'.
+# Suggested ports are 7231-7239.
 udp_listen_address = "0.0.0.0:7231"
 
 # Should we download crawl data from CommonCrawl and download it?
+# Note that the Common Crawl dataset is quite often rate limited.
+# You will get 'invalid gzip header' messages in that case.
 index_cc = false
 
 # Do we accept page inserts from the network?
 accept_insert = false
 
 # UPnP can be used to set up portforwarding from your router.
+# This wourks best if your computer only has a single connection to it,
+# so disable wifi if you also have a cable plugged in.
 upnp = false
 
 # Trackers used to announce ourselves to and to find other instances.
