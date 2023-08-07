@@ -18,5 +18,5 @@
 */
 
 pub mod extract;
-pub mod extraction_loop;
+pub mod extraction_service;
 pub mod warc;

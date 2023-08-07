@@ -18,11 +18,11 @@
 */
 
 use crate::config::Config;
-use crate::net::udp_service::UdpM;
+use crate::net::udp_service::UdpMsg;
 use crate::search::best_results::BestResults;
 use crate::search::best_results::NodeReference;
-use crate::search::messages::SearchProviderMessage;
-use crate::search::messages::SearchProviderMessage::*;
+use crate::search::search_msg::SearchMsg;
+use crate::search::search_msg::SearchMsg::*;
 use crate::search::search_provider::FoundPage;
 use crate::search::search_provider::SearchProvider;
 use crate::search::search_provider::SearchResult;
@@ -34,9 +34,9 @@ use tokio_util::sync::CancellationToken;
 pub struct SearchService {
     pub config: Config,
     pub shutdown_token: CancellationToken,
-    pub search_rx: Receiver<SearchProviderMessage>,
-    pub udp_tx: tokio::sync::mpsc::Sender<UdpM>,
-    pub search_tx: SyncSender<SearchProviderMessage>,
+    pub search_rx: Receiver<SearchMsg>,
+    pub udp_tx: tokio::sync::mpsc::Sender<UdpMsg>,
+    pub search_tx: SyncSender<SearchMsg>,
 }
 
 impl SearchService {
@@ -120,7 +120,7 @@ impl SearchService {
                         let debug = self.config.debug;
                         tokio::spawn(async move {
                             udp_tx2
-                                .send(UdpM::GetEmbedding {
+                                .send(UdpMsg::GetEmbedding {
                                     instance_id,
                                     page_id,
                                     tx: otxx,
@@ -136,7 +136,7 @@ impl SearchService {
                             }
                             // Pass it back into ourselves as a normal query.
                             search_tx2
-                                .send(SearchProviderMessage::EmbeddingSearch {
+                                .send(SearchMsg::EmbeddingSearch {
                                     otx,
                                     embedding,
                                     search_remote: true,
@@ -145,7 +145,7 @@ impl SearchService {
                         });
                     }
                 }
-                ExtractedPageMessage { page, from_network } => {
+                ExtractedPage { page, from_network } => {
                     if search_provider.local_space_available() {
                         if let Err(e) = search_provider.insert(page.clone()) {
                             eprintln!("Failed to insert {}", e);
@@ -155,7 +155,7 @@ impl SearchService {
                         // Insert on the network.
                         let tx = self.udp_tx.clone();
                         tokio::spawn(async move {
-                            if let Err(e) = tx.send(UdpM::Insert { page }).await {
+                            if let Err(e) = tx.send(UdpMsg::Insert { page }).await {
                                 eprintln!("Error occurred sending to the UDP system: {}", e)
                             }
                         });
@@ -209,7 +209,7 @@ impl SearchService {
             // Also fire it off to the network.
             let (otxx, orxx) = oneshot::channel();
             udp_tx2
-                .send(UdpM::Search {
+                .send(UdpMsg::Search {
                     embedding,
                     distance_limit: Some(worst_distance),
                     tx: otxx,

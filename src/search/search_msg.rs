@@ -21,7 +21,7 @@ use super::page_source::ExtractedPage;
 use super::search_provider::{SearchResult, SearchStats};
 
 #[derive(Debug)]
-pub enum SearchProviderMessage {
+pub enum SearchMsg {
     TextSearch {
         otx: tokio::sync::oneshot::Sender<SearchResult>,
         query: String,
@@ -36,7 +36,7 @@ pub enum SearchProviderMessage {
         embedding: Vec<f32>,
         search_remote: bool,
     },
-    ExtractedPageMessage {
+    ExtractedPage {
         page: ExtractedPage,
         from_network: bool,
     },

@@ -25,7 +25,7 @@ use std::{
     time::Duration,
 };
 
-use crate::search::{messages::SearchProviderMessage, page_source::PageSource};
+use crate::search::{page_source::PageSource, search_msg::SearchMsg};
 
 /** The URL from which we will download the gzipped WARC file list for extracting. */
 const WARC_FILE_LIST: &str =
@@ -37,9 +37,7 @@ const WARC_FILE_LIST: &str =
  *
  * This function will run forever.
  */
-pub async fn start_extraction_loop(
-    sender: SyncSender<SearchProviderMessage>,
-) -> anyhow::Result<()> {
+pub async fn start_extraction_service(sender: SyncSender<SearchMsg>) -> anyhow::Result<()> {
     let files = tokio::task::spawn_blocking(move || {
         let response = reqwest::blocking::get(WARC_FILE_LIST).unwrap();
         let file_list_reader = BufReader::new(MultiGzDecoder::new(response));
@@ -66,7 +64,7 @@ pub async fn start_extraction_loop(
  * Extract pages from a single WARC file and send them to 'sender'.
  */
 async fn extract_file(
-    sender: SyncSender<SearchProviderMessage>,
+    sender: SyncSender<SearchMsg>,
     random_file: &str,
 ) -> Result<(), anyhow::Error> {
     println!("Indexing {}", random_file);
@@ -94,7 +92,7 @@ async fn extract_file(
                 let mut page_source = PageSource::read_warc_gz(response);
 
                 while let Some(page) = page_source.next()? {
-                    sender.send(SearchProviderMessage::ExtractedPageMessage {
+                    sender.send(SearchMsg::ExtractedPage {
                         page,
                         from_network: false,
                     })?;
@@ -113,7 +111,7 @@ async fn extract_file(
             let mut page_source = PageSource::read_warc_gz(response);
 
             while let Some(page) = page_source.next()? {
-                sender.send(SearchProviderMessage::ExtractedPageMessage {
+                sender.send(SearchMsg::ExtractedPage {
                     page,
                     from_network: false,
                 })?;

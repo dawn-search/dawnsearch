@@ -19,11 +19,11 @@
 
 use anyhow::bail;
 use dawnsearch::config::Config;
-use dawnsearch::index::extraction_loop::start_extraction_loop;
-use dawnsearch::net::http::http_server_loop;
-use dawnsearch::net::udp_service::{UdpM, UdpService};
-use dawnsearch::search::messages::SearchProviderMessage;
-use dawnsearch::search::messages::SearchProviderMessage::*;
+use dawnsearch::index::extraction_service::start_extraction_service;
+use dawnsearch::net::http_service::start_http_service;
+use dawnsearch::net::udp_service::{UdpMsg, UdpService};
+use dawnsearch::search::search_msg::SearchMsg;
+use dawnsearch::search::search_msg::SearchMsg::*;
 use dawnsearch::search::search_service::SearchService;
 use std::time::Duration;
 use std::{env, fs};
@@ -55,8 +55,8 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let shutdown_token = original_shutdown_token.clone();
 
-    let (search_tx, search_rx) = std::sync::mpsc::sync_channel::<SearchProviderMessage>(2);
-    let (udp_tx, mut udp_rx) = tokio::sync::mpsc::channel::<UdpM>(2);
+    let (search_tx, search_rx) = std::sync::mpsc::sync_channel::<SearchMsg>(2);
+    let (udp_tx, mut udp_rx) = tokio::sync::mpsc::channel::<UdpMsg>(2);
 
     let udp_tx2 = udp_tx.clone();
     let config2 = config.clone();
@@ -85,7 +85,7 @@ async fn main() -> Result<(), anyhow::Error> {
     if config.index_cc_enabled {
         let tx2 = search_tx.clone();
         tokio::spawn(async move {
-            start_extraction_loop(tx2).await.unwrap();
+            start_extraction_service(tx2).await.unwrap();
         });
     }
 
@@ -93,13 +93,13 @@ async fn main() -> Result<(), anyhow::Error> {
     if config.web_enabled {
         let tx2 = search_tx.clone();
         tokio::spawn(async move {
-            http_server_loop(tx2, config2).await.unwrap();
+            start_http_service(tx2, config2).await.unwrap();
         });
     }
 
     if config.udp_enabled {
         let udp_service = UdpService {
-            search_provider_tx: search_tx.clone(),
+            search_tx: search_tx.clone(),
             udp_rx,
             config,
         };
@@ -110,14 +110,14 @@ async fn main() -> Result<(), anyhow::Error> {
         tokio::spawn(async move {
             loop {
                 tokio::time::sleep(Duration::from_millis(50)).await;
-                udp_tx2.send(UdpM::Tick {}).await.unwrap();
+                udp_tx2.send(UdpMsg::Tick {}).await.unwrap();
             }
         });
         // Announce loop.
         let udp_tx2 = udp_tx.clone();
         tokio::spawn(async move {
             loop {
-                udp_tx2.send(UdpM::Announce {}).await.unwrap();
+                udp_tx2.send(UdpMsg::Announce {}).await.unwrap();
                 tokio::time::sleep(Duration::from_secs(60)).await;
             }
         });

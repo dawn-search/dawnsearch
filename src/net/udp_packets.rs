@@ -24,7 +24,7 @@ use serde::{Deserialize, Serialize};
  */
 
 #[derive(Debug, PartialEq, Deserialize, Serialize)]
-pub enum UdpMessage {
+pub enum UdpPacket {
     #[serde(rename = "s")]
     Search {
         #[serde(rename = "si")]

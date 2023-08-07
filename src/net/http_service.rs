@@ -18,19 +18,16 @@
 */
 
 use crate::config::Config;
-use crate::net::web_content::{format_results, main_page, results_page};
-use crate::search::messages::SearchProviderMessage;
-use crate::search::messages::SearchProviderMessage::*;
+use crate::net::web::{format_results, main_page, results_page};
+use crate::search::search_msg::SearchMsg;
+use crate::search::search_msg::SearchMsg::*;
 use std::sync::mpsc::SyncSender;
 use std::time::Instant;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 
-pub async fn http_server_loop(
-    tx2: SyncSender<SearchProviderMessage>,
-    config: Config,
-) -> anyhow::Result<()> {
+pub async fn start_http_service(tx2: SyncSender<SearchMsg>, config: Config) -> anyhow::Result<()> {
     // Next up we create a TCP listener which will listen for incoming
     // connections. This TCP listener is bound to the address we determined
     // above and must be associated with an event loop.

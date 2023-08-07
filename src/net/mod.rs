@@ -17,7 +17,7 @@
    along with DawnSearch.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-pub mod http;
-pub mod udp_messages;
+pub mod http_service;
+pub mod udp_packets;
 pub mod udp_service;
-mod web_content;
+mod web;

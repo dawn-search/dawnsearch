@@ -19,7 +19,7 @@
 
 use anyhow::bail;
 use config::Config;
-use dawnsearch::net::udp_messages::{PeerInfo, UdpMessage};
+use dawnsearch::net::udp_packets::{PeerInfo, UdpPacket};
 use dawnsearch::util::now;
 use rmp_serde::{Deserializer, Serializer};
 use serde::{Deserialize, Serialize};
@@ -66,9 +66,9 @@ async fn main() -> anyhow::Result<()> {
 
     while let Ok((len, mut addr)) = socket.recv_from(&mut buf).await {
         let mut de = Deserializer::new(&buf[..len]);
-        let message: UdpMessage = Deserialize::deserialize(&mut de).unwrap();
+        let message: UdpPacket = Deserialize::deserialize(&mut de).unwrap();
         match message {
-            UdpMessage::Announce {
+            UdpPacket::Announce {
                 instance_id,
                 accept_insert,
                 pages_indexed,
@@ -97,7 +97,7 @@ async fn main() -> anyhow::Result<()> {
                     .collect();
                 for chunk in all.chunks(25) {
                     // We can probably fit 40 but let's be careful.
-                    let response = UdpMessage::Peers {
+                    let response = UdpPacket::Peers {
                         peers: chunk.to_vec(),
                     };
                     send_buf.clear();
