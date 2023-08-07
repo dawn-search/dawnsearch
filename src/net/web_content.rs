@@ -240,7 +240,7 @@ pub fn main_page() -> String {
 </p>
 <ul>
 <li>
-    DashSearch is distributed, which means it does not run on a single server, or even on a single continent. Volunteers from all over the world can host their own DawnSearch instance,
+    DawnSearch is distributed, which means it does not run on a single server, or even on a single continent. Volunteers from all over the world can host their own DawnSearch instance,
     which will then connect to the others to form a global search engine.
 </li>
 <li>
