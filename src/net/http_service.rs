@@ -175,7 +175,6 @@ pub async fn start_http_service(tx2: SyncSender<SearchMsg>, config: Config) -> a
                 if let Err(e) = socket.write_all(main_page().as_bytes()).await {
                     eprintln!("[HTTP] Error writing output for main: {}", e);
                 }
-                socket.write_all(main_page().as_bytes()).await.unwrap();
             }
         });
     }
