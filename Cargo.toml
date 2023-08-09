@@ -14,6 +14,7 @@ authors = ["Gerard Krol"]
 default = ["upnp"]
 s3 = ["aws-config", "aws-sdk-s3"]
 upnp = ["igd", "network-interface"]
+cuda = ["candle/cuda", "candle-nn/cuda", "candle-transformers/cuda"]
 
 [lib]
 
@@ -53,3 +54,4 @@ hf-hub = "0.2.0"
 tokenizers = "0.13.3"
 tracing = "0.1.37"
 serde_json = "1.0.104"
+candle-transformers = "0.1.0"

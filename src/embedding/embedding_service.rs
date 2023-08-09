@@ -38,7 +38,9 @@ pub fn device(cpu: bool) -> Result<Device> {
     } else {
         let device = Device::cuda_if_available(0)?;
         if !device.is_cuda() {
-            println!("Running on CPU, to run on GPU, build this example with `--features cuda`");
+            println!("Running on CPU, to run on GPU, build with `--features cuda`");
+        } else {
+            println!("Running on CUDA");
         }
         Ok(device)
     }
@@ -51,7 +53,7 @@ struct EmbeddingProvider {
 
 impl EmbeddingProvider {
     fn new() -> anyhow::Result<EmbeddingProvider> {
-        let cpu = true;
+        let cpu = false;
         let offline = false;
 
         let device = device(cpu)?;

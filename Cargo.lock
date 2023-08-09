@@ -668,6 +668,8 @@ checksum = "d203009ffd5182d8350d4e1eab73ca90578289db89b5f9334eeb61ed275f3b95"
 dependencies = [
  "byteorder",
  "candle-gemm",
+ "candle-kernels",
+ "cudarc",
  "half",
  "memmap2",
  "num-traits",
@@ -804,6 +806,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "candle-kernels"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f8f0299b6dd634021ee04260f27a59796087fb6ea6d201571e682c26216a5dbf"
+dependencies = [
+ "glob",
+ "rayon",
+]
+
+[[package]]
 name = "candle-nn"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -812,6 +824,20 @@ dependencies = [
  "candle-core",
  "safetensors",
  "thiserror",
+]
+
+[[package]]
+name = "candle-transformers"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5bc1f45922810857a0475c0c6032479d6daaf21c8f3601c56a2830663a6cfa54"
+dependencies = [
+ "candle-core",
+ "candle-nn",
+ "hf-hub",
+ "rand 0.8.5",
+ "tokenizers",
+ "wav",
 ]
 
 [[package]]
@@ -1037,6 +1063,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "cudarc"
+version = "0.9.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f3d03df00acea5c14967753a8c94275df7ef311fd9c5afe5984858ac8bbef0ad"
+dependencies = [
+ "half",
+]
+
+[[package]]
 name = "cxx"
 version = "1.0.102"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1124,6 +1159,7 @@ dependencies = [
  "aws-sdk-s3",
  "candle-core",
  "candle-nn",
+ "candle-transformers",
  "config",
  "cxx",
  "flate2",
@@ -2825,6 +2861,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "riff"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b9b1a3d5f46d53f4a3478e2be4a5a5ce5108ea58b100dcd139830eae7f79a3a1"
+
+[[package]]
 name = "ring"
 version = "0.16.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3817,6 +3859,15 @@ name = "wasm-bindgen-shared"
 version = "0.2.87"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ca6ad05a4870b2bf5fe995117d3728437bd27d7cd5f06f13c17443ef369775a1"
+
+[[package]]
+name = "wav"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a65e199c799848b4f997072aa4d673c034f80f40191f97fe2f0a23f410be1609"
+dependencies = [
+ "riff",
+]
 
 [[package]]
 name = "web-sys"
