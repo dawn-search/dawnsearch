@@ -18,6 +18,7 @@
 */
 
 pub mod config;
+pub mod embedding;
 pub mod index;
 pub mod net;
 pub mod search;

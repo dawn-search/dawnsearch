@@ -23,14 +23,11 @@ use crate::util::default_progress_bar;
 use anyhow::anyhow;
 use anyhow::bail;
 use cxx::UniquePtr;
-use rust_bert::pipelines::sentence_embeddings::{
-    SentenceEmbeddingsBuilder, SentenceEmbeddingsModel, SentenceEmbeddingsModelType,
-};
 use std::iter::zip;
 use std::path::Path;
 use std::time::Instant;
+use std::usize;
 use std::{self, fs};
-use std::{str, usize};
 use tokio_util::sync::CancellationToken;
 use usearch::ffi::{new_index, Index, IndexOptions, MetricKind, ScalarKind};
 
@@ -67,7 +64,6 @@ pub struct SearchStats {
 }
 
 pub struct SearchProvider {
-    model: SentenceEmbeddingsModel,
     index: UniquePtr<Index>,
 
     sqlite: rusqlite::Connection,
@@ -81,17 +77,6 @@ impl SearchProvider {
         data_dir: String,
         shutdown_token: CancellationToken,
     ) -> Result<SearchProvider, anyhow::Error> {
-        let start = Instant::now();
-        let model = SentenceEmbeddingsBuilder::remote(SentenceEmbeddingsModelType::AllMiniLmL6V2)
-            .with_device(tch::Device::Cpu)
-            .create_model()?;
-
-        let duration = start.elapsed();
-        println!(
-            "[Search Provider]  Loaded model in {} ms",
-            duration.as_millis()
-        );
-
         // Database
         let sqlite = rusqlite::Connection::open(Path::new(&data_dir).join("dawnsearch.sqlite"))?;
 
@@ -117,7 +102,6 @@ impl SearchProvider {
         let index = new_index(&INDEX_OPTIONS)?;
 
         let mut search_provider = SearchProvider {
-            model,
             index,
             sqlite,
             shutdown_token: shutdown_token.clone(),
@@ -196,15 +180,6 @@ impl SearchProvider {
         Ok(())
     }
 
-    pub fn get_embedding(&self, query: &str) -> anyhow::Result<Vec<f32>> {
-        Ok(self.model.encode(&[query])?[0].clone())
-    }
-
-    pub fn search(&self, query: &str) -> Result<SearchResult, anyhow::Error> {
-        let q = &self.model.encode(&[query])?[0];
-        self.search_embedding(q)
-    }
-
     pub fn embedding_for_page(&self, id: usize) -> Result<Vec<f32>, anyhow::Error> {
         let mut s = self
             .sqlite
@@ -272,7 +247,7 @@ impl SearchProvider {
         })
     }
 
-    pub fn insert(&mut self, page: ExtractedPage) -> Result<(), anyhow::Error> {
+    pub fn insert(&mut self, page: ExtractedPage, q: Vec<f32>) -> Result<(), anyhow::Error> {
         if !self.local_space_available() {
             bail!("No space available");
         }
@@ -287,14 +262,12 @@ impl SearchProvider {
             return Ok(());
         }
 
-        let q = &self.model.encode(&[page.combined])?[0];
-
         if !is_normalized(q.as_slice().try_into()?) {
             bail!("Insert embedding is not normalized");
         }
 
         // Insert into DB
-        let embedding: &[u8; EM_LEN * 4] = unsafe { vector_embedding_to_bytes(q)? };
+        let embedding: &[u8; EM_LEN * 4] = unsafe { vector_embedding_to_bytes(&q)? };
         self.sqlite.execute(
             "INSERT INTO page (url, title, text, embedding) VALUES (?1, ?2, ?3, ?4)",
             (page.url, page.title, page.text, embedding),
@@ -308,7 +281,7 @@ impl SearchProvider {
             // Weirdly enough we have to reserve capacity ourselves.
             self.index.reserve(self.index.size() + 1024)?;
         }
-        self.index.add(id, q)?;
+        self.index.add(id, &q)?;
         Ok(())
     }
 

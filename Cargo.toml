@@ -18,12 +18,10 @@ upnp = ["igd", "network-interface"]
 [lib]
 
 [dependencies]
-rust-bert = "^0.21.0"
 flate2 = "1.0.26"
 url = "2.4.0"
 whichlang = "0.1.0"
 indicatif = "0.17.5"
-tch = "^0.13.0"
 readability = "0.2.0"
 anyhow = { version = "1.0.72" }
 html5ever = "0.25"
@@ -49,3 +47,9 @@ network-interface = { version = "1.0.1", optional = true }
 smaz = "0.1.0"
 openssl = { version = "0.10", features = ["vendored"] }
 config = { version ="0.13.3", features = ["toml"] }
+candle = { version = "0.1.0", package = "candle-core" }
+candle-nn = "0.1.0"
+hf-hub = "0.2.0"
+tokenizers = "0.13.3"
+tracing = "0.1.37"
+serde_json = "1.0.104"

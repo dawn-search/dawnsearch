@@ -17,18 +17,20 @@
    along with DawnSearch.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+use crate::embedding::embedding_service::EmbeddingMsg;
 use crate::search::page_source::PageSource;
 use crate::search::vector::Embedding;
 use crate::util::any_as_u8_slice;
 use crate::util::default_progress_bar;
-use rust_bert::pipelines::sentence_embeddings::SentenceEmbeddingsModel;
 use std;
 use std::fs::File;
 use std::io;
 use std::io::Read;
 use std::io::Write;
 use std::path::PathBuf;
+use std::sync::mpsc::SyncSender;
 use std::time::Instant;
+use tokio::sync::oneshot;
 
 #[derive(Debug)]
 #[repr(C)]
@@ -43,7 +45,7 @@ pub struct PageEntry {
 pub fn extract_records_and_add_to_index<T: Read>(
     input: &mut T,
     filename: &PathBuf,
-    model: &SentenceEmbeddingsModel,
+    embedding_tx: SyncSender<EmbeddingMsg>,
 ) -> io::Result<()> {
     let mut page_source = PageSource::read_warc_gz(input);
 
@@ -74,7 +76,14 @@ pub fn extract_records_and_add_to_index<T: Read>(
         count += 1;
         progress.set_position(count);
 
-        let embedding = &model.encode(&[record.combined]).unwrap()[0];
+        let (otx2, orx2) = oneshot::channel();
+        embedding_tx
+            .send(EmbeddingMsg::GetEmbedding {
+                text: record.combined,
+                otx: otx2,
+            })
+            .unwrap();
+        let embedding = orx2.blocking_recv().unwrap();
 
         let url_len = record.url.len() as u64;
         let title_len = record.title.len() as u64;

@@ -25,3 +25,7 @@ Make sure to specify the processor so you can see the vectorization: -O -C targe
 Find biggest crates:
 
     cargo bloat --release --crates
+
+# Native optimizations
+
+    RUSTFLAGS='-C target-cpu=native' cargo build --release

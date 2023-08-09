@@ -168,11 +168,13 @@ pub async fn start_http_service(tx2: SyncSender<SearchMsg>, config: Config) -> a
                 .await
                 .unwrap();
             if let Some(r) = results {
-                socket
-                    .write_all(results_page(&query, &r).as_bytes())
-                    .await
-                    .unwrap();
+                if let Err(e) = socket.write_all(results_page(&query, &r).as_bytes()).await {
+                    eprintln!("[HTTP] Error writing output for results: {}", e);
+                }
             } else {
+                if let Err(e) = socket.write_all(main_page().as_bytes()).await {
+                    eprintln!("[HTTP] Error writing output for main: {}", e);
+                }
                 socket.write_all(main_page().as_bytes()).await.unwrap();
             }
         });

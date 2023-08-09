@@ -18,6 +18,7 @@
 */
 
 use crate::config::Config;
+use crate::embedding::embedding_service::EmbeddingMsg;
 use crate::net::udp_service::UdpMsg;
 use crate::search::best_results::BestResults;
 use crate::search::best_results::NodeReference;
@@ -37,6 +38,7 @@ pub struct SearchService {
     pub search_rx: Receiver<SearchMsg>,
     pub udp_tx: tokio::sync::mpsc::Sender<UdpMsg>,
     pub search_tx: SyncSender<SearchMsg>,
+    pub embedding_tx: SyncSender<EmbeddingMsg>,
 }
 
 impl SearchService {
@@ -56,7 +58,15 @@ impl SearchService {
             }
             match message {
                 TextSearch { otx, query } => {
-                    let embedding = search_provider.get_embedding(&query).unwrap();
+                    let (otx2, orx2) = oneshot::channel();
+                    self.embedding_tx
+                        .send(EmbeddingMsg::GetEmbedding {
+                            text: query,
+                            otx: otx2,
+                        })
+                        .unwrap();
+                    let embedding = orx2.blocking_recv().unwrap();
+
                     let result = match search_provider.search_embedding(&embedding) {
                         Ok(r) => r,
                         Err(e) => {
@@ -147,7 +157,15 @@ impl SearchService {
                 }
                 ExtractedPage { page, from_network } => {
                     if search_provider.local_space_available() {
-                        if let Err(e) = search_provider.insert(page.clone()) {
+                        let (otx2, orx2) = oneshot::channel();
+                        self.embedding_tx
+                            .send(EmbeddingMsg::GetEmbedding {
+                                text: page.combined.clone(),
+                                otx: otx2,
+                            })
+                            .unwrap();
+                        let embedding = orx2.blocking_recv().unwrap();
+                        if let Err(e) = search_provider.insert(page.clone(), embedding) {
                             eprintln!("Failed to insert {}", e);
                         }
                     }

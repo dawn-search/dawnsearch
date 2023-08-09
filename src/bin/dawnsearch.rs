@@ -19,6 +19,7 @@
 
 use anyhow::bail;
 use dawnsearch::config::Config;
+use dawnsearch::embedding::embedding_service::{EmbeddingMsg, EmbeddingService};
 use dawnsearch::index::extraction_service::start_extraction_service;
 use dawnsearch::net::http_service::start_http_service;
 use dawnsearch::net::udp_service::{UdpMsg, UdpService};
@@ -55,21 +56,25 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let shutdown_token = original_shutdown_token.clone();
 
+    let (embedding_tx, embedding_rx) = std::sync::mpsc::sync_channel::<EmbeddingMsg>(2);
     let (search_tx, search_rx) = std::sync::mpsc::sync_channel::<SearchMsg>(2);
     let (udp_tx, mut udp_rx) = tokio::sync::mpsc::channel::<UdpMsg>(2);
 
-    let udp_tx2 = udp_tx.clone();
-    let config2 = config.clone();
-    let search_tx2 = search_tx.clone();
+    let mut embedding_service = EmbeddingService { embedding_rx };
     tokio::task::spawn_blocking(move || {
-        SearchService {
-            config: config2,
-            shutdown_token,
-            search_rx,
-            search_tx: search_tx2,
-            udp_tx: udp_tx2,
-        }
-        .start();
+        embedding_service.start();
+    });
+
+    let mut search_service = SearchService {
+        config: config.clone(),
+        shutdown_token,
+        search_rx,
+        search_tx: search_tx.clone(),
+        udp_tx: udp_tx.clone(),
+        embedding_tx: embedding_tx.clone(),
+    };
+    tokio::task::spawn_blocking(move || {
+        search_service.start();
     });
 
     let tx2 = search_tx.clone();

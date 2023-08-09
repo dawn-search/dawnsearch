@@ -188,7 +188,12 @@ pub fn is_normalized(v: &Embedding<f32>) -> bool {
     if !l.is_finite() {
         return false;
     }
-    l > 1.0 - MAX_VECTOR_DELTA || l < 1.0 + MAX_VECTOR_DELTA
+    l > 1.0 - MAX_VECTOR_DELTA && l < 1.0 + MAX_VECTOR_DELTA
+}
+
+pub fn normalize(v: &mut Vec<f32>) {
+    let length: f32 = v.iter().map(|x| x * x).sum::<f32>().sqrt();
+    v.iter_mut().for_each(|x| *x /= length);
 }
 
 pub unsafe fn bytes_to_embedding(p: &[u8; EM_LEN * 4]) -> anyhow::Result<&[f32; EM_LEN]> {
