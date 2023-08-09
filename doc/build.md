@@ -1,4 +1,6 @@
-# Building
+# Building with rust-bert
+
+This information is outdated! Currently DawnSearch uses 'candle' for inference. Especially the CPU part is now much easier to set up. This information is retained here for reference if we ever want to support rust-bert again.
 
 This document describes how to compile on arm64 linux, for example the AWS Graviton instances.
 4GB of ram needed, for torch-sys, so on AWS that is a t4g.medium.

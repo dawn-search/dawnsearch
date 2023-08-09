@@ -36,51 +36,19 @@ Please open issues for any questions or feedback. If you want to contribute some
 
 This will build and run an 'access terminal' DawnSearch instance on a recent Ubuntu, without GPU acceleration. See [Modes](Modes.md) for examples of other configurations.
 
-    sudo apt-get update && sudo apt-get install -y build-essential libssl-dev pkg-config python3-pip
+    sudo apt-get update && sudo apt-get install -y build-essential pkg-config
 
     # Install rust if you don't have it already:
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
-    pip3 install torch==2.0.0 --index-url https://download.pytorch.org/whl/cpu
-
-Now we need to make sure the build system can find PyTorch. We search for the package:
-
-    pip3 show torch
-
-This prints the following:
-
-    Name: torch
-    Version: 2.0.0
-    Summary: Tensors and Dynamic neural networks in Python with strong GPU acceleration
-    Home-page: https://pytorch.org/
-    Author: PyTorch Team
-    Author-email: packages@pytorch.org
-    License: BSD-3
-    Location: /home/ubuntu/.local/lib/python3.10/site-packages
-    Requires: filelock, jinja2, networkx, sympy, typing-extensions
-    Required-by: 
-
-Using the path from 'Location', put this in .bashrc. Note that you need to append '/torch'.
-
-    export LIBTORCH=/home/ubuntu/.local/lib/python3.10/site-packages/torch
-    export LD_LIBRARY_PATH=${LIBTORCH}/lib:$LD_LIBRARY_PATH
-
-We can now load the new environment variables and build:
-
-    source ~/.bashrc
     mv DawnSearch.toml.example DawnSearch.toml
-    cargo run --release
+    RUSTFLAGS='-C target-cpu=native'  cargo run --release
 
 Now, go to [http://localhost:8080](http://localhost:8080) to access your own DawnSearch instance. You will be able to perform searches, but you will not contribute to the network yet. Take a look at [Modes](Modes.md) to see how you can do so.
 
-If you want to upgrade to GPU acceleration try this:
+If you want to upgrade to GPU acceleration try this. You need to have CUDA installed:
 
-    pip3 remove torch
-    pip3 install torch==2.0.0
-    cargo clean
-    cargo run --release
-
-Alternatively, follow the steps as documented for the [tch](https://github.com/LaurentMazare/tch-rs) crate.
+    RUSTFLAGS='-C target-cpu=native'  cargo run --release --features cuda
 
 Note that on an M1/M2 Mac, 'cargo install' does NOT work. 'cargo build' does though!
 
