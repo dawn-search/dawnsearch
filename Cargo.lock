@@ -663,18 +663,20 @@ dependencies = [
 [[package]]
 name = "candle-core"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d203009ffd5182d8350d4e1eab73ca90578289db89b5f9334eeb61ed275f3b95"
+source = "git+https://github.com/huggingface/candle.git?rev=eab54e44#eab54e449004bf0d5544ee0261dc89d2c3062b77"
 dependencies = [
  "byteorder",
  "candle-gemm",
  "candle-kernels",
  "cudarc",
+ "ggblas",
  "half",
  "memmap2",
  "num-traits",
  "num_cpus",
  "rand 0.8.5",
+ "rand_distr",
+ "rayon",
  "safetensors",
  "thiserror",
  "zip",
@@ -682,9 +684,9 @@ dependencies = [
 
 [[package]]
 name = "candle-gemm"
-version = "0.15.5"
+version = "0.15.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0e2ea0eb589d0652b316a478e05c85d794d378558fe2f632c35fd60664d1a31"
+checksum = "26b726a1f6cdd7ff080e95e3d91694701b1e04a58acd198e4a78c39428b2274e"
 dependencies = [
  "candle-gemm-c32",
  "candle-gemm-c64",
@@ -808,8 +810,7 @@ dependencies = [
 [[package]]
 name = "candle-kernels"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8f0299b6dd634021ee04260f27a59796087fb6ea6d201571e682c26216a5dbf"
+source = "git+https://github.com/huggingface/candle.git?rev=eab54e44#eab54e449004bf0d5544ee0261dc89d2c3062b77"
 dependencies = [
  "glob",
  "rayon",
@@ -818,8 +819,7 @@ dependencies = [
 [[package]]
 name = "candle-nn"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1209c77cc3bff32f5379abb59c136d9d039836b15a7badc7f61f4dc0b43d02b3"
+source = "git+https://github.com/huggingface/candle.git?rev=eab54e44#eab54e449004bf0d5544ee0261dc89d2c3062b77"
 dependencies = [
  "candle-core",
  "safetensors",
@@ -829,8 +829,7 @@ dependencies = [
 [[package]]
 name = "candle-transformers"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5bc1f45922810857a0475c0c6032479d6daaf21c8f3601c56a2830663a6cfa54"
+source = "git+https://github.com/huggingface/candle.git?rev=eab54e44#eab54e449004bf0d5544ee0261dc89d2c3062b77"
 dependencies = [
  "candle-core",
  "candle-nn",
@@ -977,6 +976,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e496a50fda8aacccc86d7529e2c1e0892dbd0f898a6b5645b5561b89c3210efa"
 
 [[package]]
+name = "core_affinity"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "622892f5635ce1fc38c8f16dfc938553ed64af482edb5e150bf4caedbfcb2304"
+dependencies = [
+ "libc",
+ "num_cpus",
+ "winapi",
+]
+
+[[package]]
 name = "cpufeatures"
 version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1064,9 +1074,9 @@ dependencies = [
 
 [[package]]
 name = "cudarc"
-version = "0.9.13"
+version = "0.9.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3d03df00acea5c14967753a8c94275df7ef311fd9c5afe5984858ac8bbef0ad"
+checksum = "dc4cab390f4a32340211f015292a4551742a63e528e9ade9e0bde0d1a989d2a1"
 dependencies = [
  "half",
 ]
@@ -1519,6 +1529,17 @@ dependencies = [
  "cfg-if",
  "libc",
  "wasi 0.11.0+wasi-snapshot-preview1",
+]
+
+[[package]]
+name = "ggblas"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2ac3a7a64c6508ec78a90887a068c4f45c0939f3f244f7a5175da696d16d3812"
+dependencies = [
+ "core_affinity",
+ "num_cpus",
+ "threadpool",
 ]
 
 [[package]]
@@ -3376,6 +3397,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.28",
+]
+
+[[package]]
+name = "threadpool"
+version = "1.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d050e60b33d41c19108b32cea32164033a9013fe3b46cbd4457559bfbf77afaa"
+dependencies = [
+ "num_cpus",
 ]
 
 [[package]]
